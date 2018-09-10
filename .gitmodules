@@ -1,0 +1,3 @@
+[submodule "asyncspring"]
+	path = asyncspring
+	url = git@github.com:TurBoss/asyncspring.git

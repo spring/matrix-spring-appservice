@@ -62,3 +62,5 @@ target/
 venv/
 
 config\.yaml
+
+state_store\.json
