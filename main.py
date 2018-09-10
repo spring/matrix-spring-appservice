@@ -42,11 +42,11 @@ async def spring_bot():
     bot.channels_to_join.append("#moddev")
 
     @bot.on("join")
-    def user_joined(message, source, params):
+    def on_join(message, source, params):
         print("lol")
 
     @bot.on("said")
-    def user_said(message, source, params):
+    def on_said(message, source, params):
         print("said")
 
 
