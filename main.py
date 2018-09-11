@@ -29,25 +29,18 @@ appserv = AppService(config["homeserver"]["address"], config["homeserver"]["doma
                                      })
 
 
-async def spring_bot():
-    bot = await spring.connect(config["spring"]["address"],
-                               port=config["spring"]["port"],
-                               use_ssl=config["spring"]["ssl"])
+class SpringAppService:
+    async def run(self):
+        self.bot = await spring.connect(config["spring"]["address"],
+                                        port=config["spring"]["port"],
+                                        use_ssl=config["spring"]["ssl"])
 
-    bot.login(config["spring"]["bot_username"],
-              config["spring"]["bot_password"])
+        self.bot.login(config["spring"]["bot_username"],
+                       config["spring"]["bot_password"])
 
-    bot.channels_to_join.append("#test")
-    bot.channels_to_join.append("#sy")
-    bot.channels_to_join.append("#moddev")
-
-    @bot.on("join")
-    def on_join(message, source, params):
-        print("lol")
-
-    @bot.on("said")
-    def on_said(message, source, params):
-        print("said")
+        self.bot.channels_to_join.append("#test")
+        self.bot.channels_to_join.append("#sy")
+        self.bot.channels_to_join.append("#moddev")
 
 
 async def leave_all_rooms(username):
@@ -64,13 +57,34 @@ async def join_room(username, room):
 
 
 with appserv.run(config["appservice"]["hostname"], config["appservice"]["port"]) as start:
-
     try:
         log.info("Initialization complete, running startup actions")
 
-        tasks = (spring_bot(), start)
+        spring_appservice = SpringAppService()
+
+        tasks = (spring_appservice.run(), start)
 
         loop.run_until_complete(asyncio.gather(*tasks, loop=loop))
+
+
+        @spring_appservice.bot.on("clients")
+        async def on_lobby_clients(message):
+            print(message)
+
+        @spring_appservice.bot.on("joined")
+        async def on_lobby_joined(message, user, channel):
+            print(user, channel)
+
+
+        @spring_appservice.bot.on("left")
+        async def on_lobby_left(message, user, channel, reason):
+            print(user, channel, reason)
+
+
+        @spring_appservice.bot.on("said")
+        async def on_lobby_said(message, user, target, text):
+            print(user, target, text)
+
 
         log.info("Startup actions complete, now running forever")
         loop.run_forever()
