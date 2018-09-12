@@ -1,3 +1,4 @@
+git+https://github.com/matrix-org/matrix-python-sdk.git
 git+https://github.com/tulir/mautrix-appservice-python.git
 sqlalchemy
 PyYAML

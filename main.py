@@ -4,6 +4,7 @@ import sys
 import copy
 import yaml
 
+from matrix_client.api import MatrixHttpApi
 from mautrix_appservice import AppService
 from asyncspring import spring
 
@@ -20,6 +21,10 @@ state_store = "state_store.json"
 
 mebibyte = 1024 ** 2
 
+
+matrix_api = MatrixHttpApi(config["homeserver"]["address"], config["appservice"]["hs_token"])
+
+
 appserv = AppService(config["homeserver"]["address"], config["homeserver"]["domain"],
                      config["appservice"]["as_token"], config["appservice"]["hs_token"],
                      config["appservice"]["bot_username"], log="mau.as", loop=loop,
@@ -29,11 +34,7 @@ appserv = AppService(config["homeserver"]["address"], config["homeserver"]["doma
                                      })
 
 
-
 class SpringAppService(object):
-
-    def __init__(self):
-        self.rooms = dict()
 
     async def run(self):
         self.bot = await spring.connect(config["spring"]["address"],
@@ -49,12 +50,7 @@ class SpringAppService(object):
 
         for channel in self.bot.channels_to_join:
             room = channel[1:]
-            room_id = f"#spring_{room}:jauriarts.org"
-            try:
-                log.debug(f"Creating room = {room}")
-                await spring_appservice.create_room(room)
-            except Exception as e:
-                log.debug(e)
+            await self.create_room(room)
 
     async def leave_all_rooms(self, username):
         user = appserv.intent.user(username)
@@ -93,10 +89,20 @@ class SpringAppService(object):
         except Exception as e:
             log.debug(e)
 
-    async def matrix_say(self, user, room, message):
+    async def said(self, user, room, message):
+        room_id = get_room_id(room)
         matrix_id = f"@spring_{user}:jauriarts.org"
         user = appserv.intent.user(matrix_id)
-        await user.send_text("!ckgUuMKcgcfJHSTvDP:jauriarts.org", message)
+        await user.send_text(room_id, message)
+
+
+def get_room_id(room):
+    room_id = matrix_api.get_room_id(f"#spring_{room}:jauriarts.org")
+    return room_id
+
+
+def remove_room(room):
+    matrix_api.remove_room_alias(f"#spring_{room}:jauriarts.org")
 
 
 with appserv.run(config["appservice"]["hostname"], config["appservice"]["port"]) as start:
@@ -105,8 +111,7 @@ with appserv.run(config["appservice"]["hostname"], config["appservice"]["port"])
 
     spring_appservice = SpringAppService()
 
-    tasks = (spring_appservice.run(),
-             start)
+    tasks = (spring_appservice.run(), start)
 
     loop.run_until_complete(asyncio.gather(*tasks, loop=loop))
 
@@ -114,10 +119,6 @@ with appserv.run(config["appservice"]["hostname"], config["appservice"]["port"])
     async def on_lobby_clients(message):
         channel = message.params[0]
         clients = message.params[1:]
-
-        # await spring_appservice.leave_all_rooms("@spring_appservice:jauriarts.org")
-
-        # await spring_appservice.create_room(channel)
         await spring_appservice.join_room(channel, clients)
 
 
@@ -133,7 +134,7 @@ with appserv.run(config["appservice"]["hostname"], config["appservice"]["port"])
 
     @spring_appservice.bot.on("said")
     async def on_lobby_said(message, user, target, text):
-        await spring_appservice.matrix_say(user, target, text)
+        await spring_appservice.said(user, target, text)
 
     log.info("Startup actions complete, now running forever")
     loop.run_forever()
