@@ -26,9 +26,7 @@ state_store = "state_store.json"
 
 mebibyte = 1024 ** 2
 
-
 matrix_api = MatrixHttpApi(config["homeserver"]["address"], config["appservice"]["hs_token"])
-
 
 appserv = AppService(config["homeserver"]["address"], config["homeserver"]["domain"],
                      config["appservice"]["as_token"], config["appservice"]["hs_token"],
@@ -52,13 +50,6 @@ class SpringAppService(object):
 
         self.bot.login(config["spring"]["bot_username"],
                        config["spring"]["bot_password"])
-        """
-        rooms = await appserv.intent.get_joined_rooms()
-        print(rooms)
-        for channel in self.bot.channels_to_join:
-            room = channel[1:]
-            await self.create_room(room)
-        """
 
     async def leave_all_rooms(self, username):
         user = appserv.intent.user(username)
@@ -115,33 +106,35 @@ def get_room_id(room):
 def remove_room(room):
     matrix_api.remove_room_alias(f"#spring_{room}:jauriarts.org")
 
+async def get_users_in_rooms():
+
+    rooms = await appserv.intent.get_joined_rooms()
+    log.debug(rooms)
+
+    for room in rooms:
+        matrix_users = await appserv.intent.get_room_members(room)
+        log.debug(matrix_users)
+        for user in matrix_users:
+            if not user.startswith("@spring"):
+                log.debug(user)
+                yield (user)
 
 with appserv.run(config["appservice"]["hostname"], config["appservice"]["port"]) as start:
-
     log.info("Initialization complete, running startup actions")
 
     spring_appservice = SpringAppService()
 
     tasks = (spring_appservice.run(), start)
 
+    spring_users = dict()
 
     loop.run_until_complete(asyncio.gather(*tasks, loop=loop))
 
-
-    async def try_handle_event(self, evt: MatrixEvent) -> None:
-        try:
-            await self.handle_event(evt)
-        except Exception as e:
-            self.log.exception("Error handling manually received Matrix event")
-
+    spring_users. get_users_in_rooms()
 
     @appserv.matrix_event_handler
-    async def handle_event(self, event: MatrixEvent) -> None:
-        if self.filter_matrix_event(event):
-            return
-
+    async def handle_event(event: MatrixEvent) -> None:
         log.debug(event)
-
         event_type = event.get("type", "m.unknown")  # type: str
         room_id = event.get("room_id", None)  # type: Optional[MatrixRoomID]
         event_id = event.get("event_id", None)  # type: Optional[MatrixEventID]
@@ -172,6 +165,7 @@ with appserv.run(config["appservice"]["hostname"], config["appservice"]["port"])
     @spring_appservice.bot.on("said")
     async def on_lobby_said(message, user, target, text):
         await spring_appservice.said(user, target, text)
+
 
     log.info("Startup actions complete, now running forever")
     loop.run_forever()
