@@ -4,8 +4,13 @@ import sys
 import copy
 import yaml
 
+from typing import Dict, List, Match, Optional, Set, Tuple, TYPE_CHECKING
+
 from matrix_client.api import MatrixHttpApi
+
 from mautrix_appservice import AppService
+from m_types import MatrixEvent, MatrixEventID, MatrixRoomID, MatrixUserID
+
 from asyncspring import spring
 
 with open("config.yaml", 'r') as yml_file:
@@ -98,6 +103,9 @@ class SpringAppService(object):
         user = appserv.intent.user(matrix_id)
         await user.send_text(room_id, message)
 
+    def say(self, user, room, message):
+        print(f"user : {user} , room : {room} , message : {message}")
+
 
 def get_room_id(room):
     room_id = matrix_api.get_room_id(f"#spring_{room}:jauriarts.org")
@@ -108,9 +116,7 @@ def remove_room(room):
     matrix_api.remove_room_alias(f"#spring_{room}:jauriarts.org")
 
 
-
 with appserv.run(config["appservice"]["hostname"], config["appservice"]["port"]) as start:
-
 
     log.info("Initialization complete, running startup actions")
 
@@ -118,12 +124,33 @@ with appserv.run(config["appservice"]["hostname"], config["appservice"]["port"])
 
     tasks = (spring_appservice.run(), start)
 
+
     loop.run_until_complete(asyncio.gather(*tasks, loop=loop))
 
+
+    async def try_handle_event(self, evt: MatrixEvent) -> None:
+        try:
+            await self.handle_event(evt)
+        except Exception as e:
+            self.log.exception("Error handling manually received Matrix event")
+
+
     @appserv.matrix_event_handler
-    def handler(event):
-        print("LOL")
-        print(event)
+    async def handle_event(self, event: MatrixEvent) -> None:
+        if self.filter_matrix_event(event):
+            return
+
+        log.debug(event)
+
+        event_type = event.get("type", "m.unknown")  # type: str
+        room_id = event.get("room_id", None)  # type: Optional[MatrixRoomID]
+        event_id = event.get("event_id", None)  # type: Optional[MatrixEventID]
+        sender = event.get("sender", None)  # type: Optional[MatrixUserID]
+        content = event.get("content", {})  # type: Dict
+
+        if event_type == 'm.room.message':
+            print(content.get("body"))
+
 
     @spring_appservice.bot.on("clients")
     async def on_lobby_clients(message):
