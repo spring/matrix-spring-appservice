@@ -47,10 +47,13 @@ class SpringAppService(object):
 
         self.bot.login(config["spring"]["bot_username"],
                        config["spring"]["bot_password"])
-
+        """
+        rooms = await appserv.intent.get_joined_rooms()
+        print(rooms)
         for channel in self.bot.channels_to_join:
             room = channel[1:]
             await self.create_room(room)
+        """
 
     async def leave_all_rooms(self, username):
         user = appserv.intent.user(username)
@@ -69,7 +72,7 @@ class SpringAppService(object):
                 task = {
                     user.join_room(room_alias),
                     user.set_presence("online"),
-                    user.set_display_name(f"{client} (lobby)"),
+                    user.set_display_name(f"{client} (Lobby)"),
                 }
                 loop.run_until_complete(asyncio.gather(*task, loop=loop))
 
@@ -105,7 +108,9 @@ def remove_room(room):
     matrix_api.remove_room_alias(f"#spring_{room}:jauriarts.org")
 
 
+
 with appserv.run(config["appservice"]["hostname"], config["appservice"]["port"]) as start:
+
 
     log.info("Initialization complete, running startup actions")
 
@@ -114,6 +119,11 @@ with appserv.run(config["appservice"]["hostname"], config["appservice"]["port"])
     tasks = (spring_appservice.run(), start)
 
     loop.run_until_complete(asyncio.gather(*tasks, loop=loop))
+
+    @appserv.matrix_event_handler
+    def handler(event):
+        print("LOL")
+        print(event)
 
     @spring_appservice.bot.on("clients")
     async def on_lobby_clients(message):
