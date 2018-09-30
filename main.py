@@ -3,8 +3,10 @@ import logging.config
 import sys
 import copy
 import yaml
+import xmlrpc.client
 
 from typing import Dict, List, Match, Optional, Set, Tuple, TYPE_CHECKING
+from urllib.parse import quote
 
 from matrix_client.api import MatrixHttpApi
 
@@ -40,8 +42,16 @@ DOMAINS = ["[matrix]", "[jauriarts]"]
 
 
 def get_matrix_room_id(room):
-    room_id = matrix_api.get_room_id(f"#spring_{room}:{config['homeserver']['domain']}")
+    room_id = matrix_api.get_room_id(room)
     return room_id
+
+
+async def get_matrix_room_alias(room):
+    room_alias = await appserv.intent.client.request(
+        "GET",
+        f"/rooms/{quote(room, safe='')}/state/m.room.aliases/{config['homeserver']['domain']}")
+
+    return room_alias
 
 
 def remove_matrix_room(room):
@@ -68,7 +78,7 @@ class SpringAppService(object):
 
     def __init__(self):
 
-        # loop.run_until_complete(appserv.intent.add_room_alias(room_id="!VDtYyDdWFgqjyYVhpZ:jauriarts.org", localpart="spring_main"))
+        # await appserv.intent.add_room_alias(room_id="!VDtYyDdWFgqjyYVhpZ:jauriarts.org", localpart="spring_main"))
 
         self.spring_clients = dict()
 
@@ -97,7 +107,7 @@ class SpringAppService(object):
         matrix_id = f"@spring_{username.lower()}:{config['homeserver']['domain']}"
         user = appserv.intent.user(matrix_id)
 
-        await user.join_room("!VDtYyDdWFgqjyYVhpZ:jauriarts.org")
+        # await user.join_room("!VDtYyDdWFgqjyYVhpZ:jauriarts.org")
 
         task = [user.set_presence("online"),
                 user.set_display_name(f"{username} (Lobby)")]
@@ -131,12 +141,13 @@ class SpringAppService(object):
     async def leave_matrix_room(self, room, clients):
         for client in clients:
             if client != "spring":
-                print(client)
+
                 matrix_id = f"@spring_{client}:{config['homeserver']['domain']}"
                 room_alias = f"#spring_{room}:{config['homeserver']['domain']}"
 
                 user = appserv.intent.user(matrix_id)
-                room_id = get_matrix_room_id(room)
+                room_id = get_matrix_room_id(room_alias)
+
                 await user.leave_room(room_id=room_id)
 
     async def create_matrix_room(self, room):
@@ -149,21 +160,30 @@ class SpringAppService(object):
             log.debug(e)
 
     async def said(self, user, room, message):
-        room_id = get_matrix_room_id(room)
-        matrix_id = f"@spring_{user}:{config['homeserver']['domain']}"
+        matrix_id = f"@spring_{user.lower()}:{config['homeserver']['domain']}"
+        room_alias = f"#spring_{room}:{config['homeserver']['domain']}"
+
+        room_id = get_matrix_room_id(room_alias)
         user = appserv.intent.user(matrix_id)
+
         await user.send_text(room_id, message)
 
-    async def connect_spring_users(self):
-        user = appserv.intent.user(username)
-        display_name = user.get_displayname(False, False)
+    async def connect_matrix_users_to_spring(self, username, room):
+        room_id = get_matrix_room_id(room)
+        display_name = await appserv.intent.get_displayname(user_id=username, room_id=room_id)
 
-        domain = user[1:].split(":")[1].split(".")[0]
-        self.spring_clients[user] = SpringClient(f"[{domain}]{display_name}", config["spring"]["fake_user_pass"],
-                                                 ["test"])
+        domain = username.split(":")[1].split(".")[0]
+        spring_username = "[{1}]{0}".format(display_name, domain)
 
-    def register(self, username):
-        print(username)
+        self.spring_clients[spring_username] = SpringClient(spring_username, config["spring"]["fake_user_pass"], ["test"])
+        await self.spring_clients[spring_username].connect()
+        self.spring_clients[spring_username].login()
+
+    def register(self, spring_username):
+        self.spring_clients[spring_username].register()
+
+    def accept_agreement(self, spring_username):
+        self.spring_clients[spring_username].accept()
 
 
 class SpringClient(object):
@@ -181,17 +201,43 @@ class SpringClient(object):
                                         use_ssl=config["spring"]["ssl"],
                                         name=self.username)
 
-    async def register(self, username):
-        self.bot.register(username, self.password)
+    def register(self):
+        self.bot.register(self.username, self.password, "turboss@mail.com")
 
-    async def login(self):
+    def login(self):
         self.bot.login(self.username, self.password)
 
     async def join(self, room):
         print(room)
 
+    def accept(self):
+        self.bot.accept()
+
+
+async def init_spring_users(spring_appserv):
+
+    members = dict()
+
+    rooms = await appserv.intent.get_joined_rooms()
+    for room_id in rooms:
+        room_alias = await get_matrix_room_alias(room_id)
+        members[room_alias['aliases'][0]] = await appserv.intent.get_room_members(room_id=room_id)
+
+    for room, member_list in members.items():
+        for member in member_list:
+            if member.startswith("@id_"):
+                with xmlrpc.client.ServerProxy("http://localhost:8300/") as proxy:
+                    print(member)
+                    status = proxy.get_account_info(member)
+
+                    print(status)
+
+            if not member.startswith("@spring"):
+                await spring_appserv.connect_matrix_users_to_spring(member, room)
+
 
 def main():
+
     with appserv.run(config["appservice"]["hostname"], config["appservice"]["port"]) as start:
 
         ################
@@ -207,11 +253,19 @@ def main():
         tasks = (spring_appservice.run(), start)
         loop.run_until_complete(asyncio.gather(*tasks, loop=loop))
 
+        appservice_account = loop.run_until_complete(appserv.intent.whoami())
+        user = appserv.intent.user(appservice_account)
+        loop.run_until_complete(user.set_presence("online"))
+
+        # loop.run_until_complete(init_spring_users(spring_appservice))
+
         ################
         #
         # Matrix events
         #
         ################
+
+        """"
         @appserv.matrix_event_handler
         async def handle_event(event: MatrixEvent) -> None:
             log.debug(event)
@@ -222,17 +276,21 @@ def main():
             content = event.get("content", {})  # type: Dict
 
             if event_type == "m.room.message":
+                if sender.startswith("@spring"):
+                    return
+
                 print(content.get("body"))
 
+         
             if event_type == "m.room.member":
-                membership = event.get("membership")
+                membership = content.get("membership")
                 if membership == "join":
-                    pass
-                    # await spring_appservice.join_spring_room()
+                    await spring_appservice.connect_matrix_users_to_spring(sender, room_id)
+         """
 
         ################
         #
-        # Sprint events
+        # Spring events
         #
         ################
 
@@ -287,6 +345,13 @@ def main():
                     return
 
                 await spring_appservice.logout_matrix_account(username)
+
+        @spring_appservice.bot.on("agreement_end")
+        async def on_lobby_agreement_end(message):
+            username = message.client.username
+            print("NO OK")
+            spring_appservice.accept_agreement(username)
+            print("OK")
 
         log.info("Startup actions complete, now running forever")
         loop.run_forever()
