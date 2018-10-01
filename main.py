@@ -94,6 +94,7 @@ class SpringAppService(object):
         self.bot.channels_to_join.append("#test")
         self.bot.channels_to_join.append("#moddev")
         self.bot.channels_to_join.append("#sy")
+        self.bot.channels_to_join.append("#s44")
 
         self.bot.login(config["spring"]["bot_username"],
                        config["spring"]["bot_password"])
@@ -106,8 +107,6 @@ class SpringAppService(object):
     async def login_matrix_account(self, username):
         matrix_id = f"@spring_{username.lower()}:{config['homeserver']['domain']}"
         user = appserv.intent.user(matrix_id)
-
-        # await user.join_room("!VDtYyDdWFgqjyYVhpZ:jauriarts.org")
 
         task = [user.set_presence("online"),
                 user.set_display_name(f"{username} (Lobby)")]
@@ -162,6 +161,9 @@ class SpringAppService(object):
     async def said(self, user, room, message):
         matrix_id = f"@spring_{user.lower()}:{config['homeserver']['domain']}"
         room_alias = f"#spring_{room}:{config['homeserver']['domain']}"
+
+        if matrix_id == "@spring_glenda:jaurarts.org":
+            return
 
         room_id = get_matrix_room_id(room_alias)
         user = appserv.intent.user(matrix_id)
@@ -257,6 +259,8 @@ def main():
         user = appserv.intent.user(appservice_account)
         loop.run_until_complete(user.set_presence("online"))
 
+        # loop.run_until_complete(appserv.intent.add_room_alias(room_id="!xIAWDQuQEDFzSllXML:springrts.com", localpart="spring_springlobby"))
+
         # loop.run_until_complete(init_spring_users(spring_appservice))
 
         ################
@@ -313,6 +317,8 @@ def main():
 
         @spring_appservice.bot.on("said")
         async def on_lobby_said(message, user, target, text):
+            if user == "Glenda":
+                return
             if message.client.name == "appservice":
                 await spring_appservice.said(user, target, text)
 
