@@ -300,7 +300,7 @@ def main():
                 if event_type == "m.room.message":
                     body = content.get("body")
                     if body.startswith("!"):
-                        handle_command(body)
+                        loop.run_until_complete(handle_command(body))
 
             """
             if event_type == "m.room.message":
