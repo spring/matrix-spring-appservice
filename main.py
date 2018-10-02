@@ -250,6 +250,9 @@ def main():
 
         log.info("Initialization complete, running startup actions")
 
+        admin_list = config["appservice"]["admins"]
+        admin_room = config["appservice"]["admin_room"]
+
         spring_appservice = SpringAppService()
 
         tasks = (spring_appservice.run(), start)
@@ -259,17 +262,19 @@ def main():
         user = appserv.intent.user(appservice_account)
         loop.run_until_complete(user.set_presence("online"))
 
-        # loop.run_until_complete(appserv.intent.add_room_alias(room_id="!xIAWDQuQEDFzSllXML:springrts.com", localpart="spring_springlobby"))
-
-        # loop.run_until_complete(init_spring_users(spring_appservice))
-
         ################
         #
         # Matrix events
         #
         ################
 
-        """"
+        def handle_command(body):
+            cmd = body[1:].split(" ")[0]
+            args = body[1:].split(" ")[1:]
+
+            print(cmd)
+            print(args)
+
         @appserv.matrix_event_handler
         async def handle_event(event: MatrixEvent) -> None:
             log.debug(event)
@@ -279,25 +284,33 @@ def main():
             sender = event.get("sender", None)  # type: Optional[MatrixUserID]
             content = event.get("content", {})  # type: Dict
 
+            if sender in admin_list:
+                if room_id != admin_room:
+                    return
+                if event_type == "m.room.message":
+                    body = content.get("body")
+                    if body.startswith("!"):
+                        handle_command(body)
+
+            """
             if event_type == "m.room.message":
                 if sender.startswith("@spring"):
                     return
 
                 print(content.get("body"))
-
-         
+            
             if event_type == "m.room.member":
                 membership = content.get("membership")
                 if membership == "join":
                     await spring_appservice.connect_matrix_users_to_spring(sender, room_id)
-         """
+            """
 
         ################
         #
         # Spring events
         #
         ################
-
+        
         @spring_appservice.bot.on("clients")
         async def on_lobby_clients(message):
             if message.client.name == "appservice":
@@ -358,7 +371,7 @@ def main():
             print("NO OK")
             spring_appservice.accept_agreement(username)
             print("OK")
-
+        
         log.info("Startup actions complete, now running forever")
         loop.run_forever()
 
