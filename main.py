@@ -268,12 +268,22 @@ def main():
         #
         ################
 
-        def handle_command(body):
+        async def handle_command(body):
             cmd = body[1:].split(" ")[0]
             args = body[1:].split(" ")[1:]
 
-            print(cmd)
-            print(args)
+            if cmd == "set_room_alias":
+                if len(args) == 2:
+                    await user.add_room_alias(room_id=args[0], localpart=args[1])
+
+            elif cmd == "join_room":
+                if len(args) == 1:
+                    await user.join_room(room_id=args[0])
+
+            elif cmd == "leave_room":
+                if len(args) == 1:
+                    await user.leave_room(room_id=args[0])
+
 
         @appserv.matrix_event_handler
         async def handle_event(event: MatrixEvent) -> None:
@@ -371,7 +381,7 @@ def main():
             print("NO OK")
             spring_appservice.accept_agreement(username)
             print("OK")
-        
+
         log.info("Startup actions complete, now running forever")
         loop.run_forever()
 
