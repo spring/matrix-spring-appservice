@@ -95,6 +95,7 @@ class SpringAppService(object):
         self.bot.channels_to_join.append("#moddev")
         self.bot.channels_to_join.append("#sy")
         self.bot.channels_to_join.append("#s44")
+        self.bot.channels_to_join.append("#springlobby")
 
         self.bot.login(config["spring"]["bot_username"],
                        config["spring"]["bot_password"])
@@ -301,6 +302,10 @@ def main():
                     body = content.get("body")
                     if body.startswith("!"):
                         await handle_command(body)
+            # else:
+            #    if event_type == "m.room.message":
+            #         body = content.get("body")
+
 
             """
             if event_type == "m.room.message":
