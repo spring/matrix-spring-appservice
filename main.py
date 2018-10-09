@@ -3,7 +3,6 @@ import logging.config
 import sys
 import copy
 import yaml
-import xmlrpc.client
 
 from typing import Dict, List, Match, Optional, Set, Tuple, TYPE_CHECKING
 from urllib.parse import quote
@@ -100,6 +99,8 @@ class SpringAppService(object):
         self.bot.login(config["spring"]["bot_username"],
                        config["spring"]["bot_password"])
 
+        self.bot.bridged_client_from()
+
     async def leave_all_matrix_rooms(self, username):
         user = appserv.intent.user(username)
         for room in await user.get_joined_rooms():
@@ -141,7 +142,6 @@ class SpringAppService(object):
     async def leave_matrix_room(self, room, clients):
         for client in clients:
             if client != "spring":
-
                 matrix_id = f"@spring_{client}:{config['homeserver']['domain']}"
                 room_alias = f"#spring_{room}:{config['homeserver']['domain']}"
 
@@ -171,76 +171,30 @@ class SpringAppService(object):
 
         await user.send_text(room_id, message)
 
-    async def connect_matrix_users_to_spring(self, username, room):
+    async def matrix_user_joined(self, username, room):
         room_id = get_matrix_room_id(room)
         display_name = await appserv.intent.get_displayname(user_id=username, room_id=room_id)
 
         domain = username.split(":")[1].split(".")[0]
         spring_username = "[{1}]{0}".format(display_name, domain)
 
-        self.spring_clients[spring_username] = SpringClient(spring_username, config["spring"]["fake_user_pass"], ["test"])
-        await self.spring_clients[spring_username].connect()
-        self.spring_clients[spring_username].login()
-
-    def register(self, spring_username):
-        self.spring_clients[spring_username].register()
-
-    def accept_agreement(self, spring_username):
-        self.spring_clients[spring_username].accept()
+        self.bot.join_from()
 
 
-class SpringClient(object):
+    async def matrix_user_left(self, username, room):
+        room_id = get_matrix_room_id(room)
+        display_name = await appserv.intent.get_displayname(user_id=username, room_id=room_id)
 
-    def __init__(self, username, password, rooms):
-        self.username = username
-        self.password = password
-        self.rooms = rooms
+        domain = username.split(":")[1].split(".")[0]
+        spring_username = "[{1}]{0}".format(display_name, domain)
 
-        self.bot = None
+        self.bot.leave_from()
 
-    async def connect(self):
-        self.bot = await spring.connect(config["spring"]["address"],
-                                        port=config["spring"]["port"],
-                                        use_ssl=config["spring"]["ssl"],
-                                        name=self.username)
-
-    def register(self):
-        self.bot.register(self.username, self.password, "turboss@mail.com")
-
-    def login(self):
-        self.bot.login(self.username, self.password)
-
-    async def join(self, room):
-        print(room)
-
-    def accept(self):
-        self.bot.accept()
-
-
-async def init_spring_users(spring_appserv):
-
-    members = dict()
-
-    rooms = await appserv.intent.get_joined_rooms()
-    for room_id in rooms:
-        room_alias = await get_matrix_room_alias(room_id)
-        members[room_alias['aliases'][0]] = await appserv.intent.get_room_members(room_id=room_id)
-
-    for room, member_list in members.items():
-        for member in member_list:
-            if member.startswith("@id_"):
-                with xmlrpc.client.ServerProxy("http://localhost:8300/") as proxy:
-                    print(member)
-                    status = proxy.get_account_info(member)
-
-                    print(status)
-
-            if not member.startswith("@spring"):
-                await spring_appserv.connect_matrix_users_to_spring(member, room)
+    async def say_from_matrix_to_spring(self, username, room):
+        self.bot.say_from()
 
 
 def main():
-
     with appserv.run(config["appservice"]["hostname"], config["appservice"]["port"]) as start:
 
         ################
@@ -265,7 +219,7 @@ def main():
 
         ################
         #
-        # Matrix events
+        # Matrix helper functions
         #
         ################
 
@@ -285,6 +239,11 @@ def main():
                 if len(args) == 1:
                     await user.leave_room(room_id=args[0])
 
+        ################
+        #
+        # Matrix events
+        #
+        ################
 
         @appserv.matrix_event_handler
         async def handle_event(event: MatrixEvent) -> None:
@@ -302,30 +261,28 @@ def main():
                     body = content.get("body")
                     if body.startswith("!"):
                         await handle_command(body)
-            # else:
-            #    if event_type == "m.room.message":
-            #         body = content.get("body")
+            else:
+                if event_type == "m.room.message":
+                    if sender.startswith("@spring"):
+                        return
+                    else:
+                        body = content.get("body")
+                        print(body)
 
-
-            """
-            if event_type == "m.room.message":
-                if sender.startswith("@spring"):
-                    return
-
-                print(content.get("body"))
-            
-            if event_type == "m.room.member":
-                membership = content.get("membership")
-                if membership == "join":
-                    await spring_appservice.connect_matrix_users_to_spring(sender, room_id)
-            """
+                elif event_type == "m.room.member":
+                    membership = content.get("membership")
+                    print(membership)
+                    if membership == "join":
+                        await spring_appservice.matrix_user_joined(sender, room_id)
+                    elif membership == "leave":
+                        await spring_appservice.matrix_user_left(sender, room_id)
 
         ################
         #
         # Spring events
         #
         ################
-        
+
         @spring_appservice.bot.on("clients")
         async def on_lobby_clients(message):
             if message.client.name == "appservice":
@@ -354,7 +311,7 @@ def main():
         async def on_lobby_denied(message):
             if message.client.name != "appservice":
                 user = message.client.name
-                await spring_appservice.register(user)
+                # await spring_appservice.register(user)
 
         @spring_appservice.bot.on("adduser")
         async def on_lobby_adduser(message):
