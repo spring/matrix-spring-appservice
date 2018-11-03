@@ -167,6 +167,18 @@ class SpringAppService(object):
 
         await user.send_text(room_id, message)
 
+    async def saidex(self, user, room, message):
+        matrix_id = f"@spring_{user.lower()}:{config['homeserver']['domain']}"
+        room_alias = f"#spring_{room}:{config['homeserver']['domain']}"
+
+        if matrix_id == "@spring_glenda:jaurarts.org":
+            return
+
+        room_id = get_matrix_room_id(room_alias)
+        user = appserv.intent.user(matrix_id)
+
+        await user.send_emote(room_id, message)
+
     async def matrix_user_joined(self, matrix_username, room_id):
         print("matrix user Joined")
         print(room_id)
@@ -336,6 +348,13 @@ def main():
                 return
             if message.client.name == "appservice":
                 await spring_appservice.said(user, target, text)
+
+        @spring_appservice.bot.on("saidex")
+        async def on_lobby_said(message, user, target, text):
+            if user == "Glenda":
+                return
+            if message.client.name == "appservice":
+                await spring_appservice.saidex(user, target, text)
 
         @spring_appservice.bot.on("denied")
         async def on_lobby_denied(message):
