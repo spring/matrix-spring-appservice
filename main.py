@@ -350,7 +350,7 @@ def main():
                 await spring_appservice.said(user, target, text)
 
         @spring_appservice.bot.on("saidex")
-        async def on_lobby_said(message, user, target, text):
+        async def on_lobby_saidex(message, user, target, text):
             if user == "Glenda":
                 return
             if message.client.name == "appservice":
