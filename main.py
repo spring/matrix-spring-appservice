@@ -180,6 +180,9 @@ class SpringAppService(object):
         await user.send_emote(room_id, message)
 
     async def matrix_user_joined(self, matrix_username, room_id):
+        if matrix_username.startswith("@spring_"):
+            return
+
         print("matrix user Joined")
         print(room_id)
 
@@ -201,16 +204,25 @@ class SpringAppService(object):
         self.bot.join_from(channel, domain, display_name)
 
     async def matrix_user_left(self, username, room):
-        room_id = get_matrix_room_id(room)
-        display_name = await appserv.intent.get_displayname(user_id=username, room_id=room_id)
 
-        domain = username.split(":")[1].split(".")[0]
-        spring_username = "[{1}]{0}".format(display_name, domain)
+        if username.startswith("@spring_"):
+            return
 
-        self.bot.leave_from()
+        print(room)
+
+        for room_alias in room['aliases']:
+            room_id = get_matrix_room_id(room_alias)
+            display_name = await appserv.intent.get_displayname(user_id=username, room_id=room_id)
+
+            domain = username.split(":")[1].split(".")[0]
+            spring_username = "[{1}]{0}".format(display_name, domain)
+
+            self.bot.leave_from()
 
     async def say_from(self, matrix_username, room_id, body):
 
+        if matrix_username.startswith("@spring_"):
+            return
 
         room_alias = await get_matrix_room_alias(room_id)
 
@@ -227,7 +239,6 @@ class SpringAppService(object):
             user = matrix_username.split(":")[0][1:]
             domain = matrix_username.split(":")[1]
             self.bot.say_from(user, domain, channel, body)
-
 
 
 def main():
@@ -312,11 +323,14 @@ def main():
 
                 elif event_type == "m.room.member":
                     membership = content.get("membership")
+                    room_alias = await get_matrix_room_alias(room_id)
+
                     print(membership)
+
                     if membership == "join":
                         await spring_appservice.matrix_user_joined(sender, room_id)
                     elif membership == "leave":
-                        await spring_appservice.matrix_user_left(sender, room_id)
+                        await spring_appservice.matrix_user_left(sender, room_alias)
 
 
         ################
