@@ -83,6 +83,8 @@ class SpringAppService(object):
 
     async def run(self):
 
+        log.debug("RUN")
+
         self.bot = await spring.connect(config["spring"]["address"],
                                         port=config["spring"]["port"],
                                         use_ssl=config["spring"]["ssl"],
@@ -100,7 +102,7 @@ class SpringAppService(object):
     async def leave_all_matrix_rooms(self, username):
         user = appserv.intent.user(username)
         for room in await user.get_joined_rooms():
-            await  user.leave_room(room)
+            await user.leave_room(room)
 
     async def login_matrix_account(self, username):
         matrix_id = f"@spring_{username.lower()}:{config['homeserver']['domain']}"
@@ -124,7 +126,7 @@ class SpringAppService(object):
 
         loop.run_until_complete(asyncio.gather(*task, loop=loop))
 
-    async def join_room(self, room, clients):
+    async def join_matrix_room(self, room, clients):
         room_alias = f"#spring_{room.lower()}:{config['homeserver']['domain']}"
 
         for client in clients:
@@ -135,7 +137,7 @@ class SpringAppService(object):
 
                     await user.join_room(room_alias)
 
-    async def leave_room(self, room, clients):
+    async def leave_matrix_room(self, room, clients):
         for client in clients:
             if client != "spring":
                 matrix_id = f"@spring_{client}:{config['homeserver']['domain']}"
@@ -180,11 +182,11 @@ class SpringAppService(object):
         await user.send_emote(room_id, message)
 
     async def matrix_user_joined(self, matrix_username, room_id):
+
+        log.debug("MATRIX_USER_JOINED")
+
         if matrix_username.startswith("@spring_"):
             return
-
-        print("matrix user Joined")
-        print(room_id)
 
         display_name = await appserv.intent.get_displayname(user_id=matrix_username, room_id=room_id)
 
@@ -194,6 +196,7 @@ class SpringAppService(object):
 
         channel = None
         for room in room_list:
+            log.debug(room)
             if room.startswith("#spring_"):
                 channel = room.split("_")[1].split(":")[0]
 
@@ -205,19 +208,25 @@ class SpringAppService(object):
 
     async def matrix_user_left(self, username, room):
 
+        log.debug("MATRIX_USER_LEFT")
+
         if username.startswith("@spring_"):
             return
 
-        print(room)
+        domain = username.split(":")[1].split(".")[0]
 
         for room_alias in room['aliases']:
+
+            log.debug(room_alias)
+
             room_id = get_matrix_room_id(room_alias)
             display_name = await appserv.intent.get_displayname(user_id=username, room_id=room_id)
 
-            domain = username.split(":")[1].split(".")[0]
             spring_username = "[{1}]{0}".format(display_name, domain)
 
-            self.bot.leave_from()
+            self.bot.leave_from("test", domain, display_name)
+
+        self.bot.un_bridged_client_from(domain, username)
 
     async def say_from(self, matrix_username, room_id, body):
 
@@ -274,7 +283,16 @@ def main():
         #
         ################
 
+        async def remove_ghost():
+            users = await get_users_in_matrix_rooms()
+
+            log.debug(users)
+            # spring_appservice.logout_matrix_account()
+
         async def handle_command(body):
+
+            log.debug(body)
+
             cmd = body[1:].split(" ")[0]
             args = body[1:].split(" ")[1:]
 
@@ -290,6 +308,13 @@ def main():
                 if len(args) == 1:
                     await user.leave_room(room_id=args[0])
 
+            elif cmd == "remove_ghost":
+                if len(args) == 0:
+                    await remove_ghost()
+
+            else:
+                await user.send_text()
+
         ################
         #
         # Matrix events
@@ -298,7 +323,6 @@ def main():
 
         @appserv.matrix_event_handler
         async def handle_event(event: MatrixEvent) -> None:
-            log.debug(event)
 
             event_type = event.get("type", "m.unknown")  # type: str
             room_id = event.get("room_id", None)  # type: Optional[MatrixRoomID]
@@ -306,32 +330,36 @@ def main():
             sender = event.get("sender", None)  # type: Optional[MatrixUserID]
             content = event.get("content", {})  # type: Dict
 
-            if sender in admin_list:
-                if room_id != admin_room:
-                    return
-                if event_type == "m.room.message":
-                    body = content.get("body")
-                    if body.startswith("!"):
-                        await handle_command(body)
+            log.debug("EVENT TYPE: {}".format(event_type))
+            log.debug("EVENT ROOM_ID: {}".format(room_id))
+            log.debug("EVENT SENDER: {}".format(sender))
+            log.debug("EVENT CONTENT: {}".format(content))
+
+            if room_id == admin_room:
+                if sender in admin_list:
+                    if event_type == "m.room.message":
+                        body = content.get("body")
+                        if body.startswith("!"):
+                            await handle_command(body)
             else:
                 if event_type == "m.room.message":
-                    if sender.startswith("@spring"):
-                        return
-                    else:
+                    log.debug("ROOM MESSAGE")
+                    if not sender.startswith("@spring_"):
                         body = content.get("body")
                         await spring_appservice.say_from(sender, room_id, body)
 
                 elif event_type == "m.room.member":
-                    membership = content.get("membership")
-                    room_alias = await get_matrix_room_alias(room_id)
 
-                    print(membership)
+                    membership = content.get("membership")
+
+                    room_alias = await get_matrix_room_alias(room_id)
+                    log.debug(membership)
+                    log.debug("EVENT MEMBERSHIP {}".format(membership))
 
                     if membership == "join":
                         await spring_appservice.matrix_user_joined(sender, room_id)
                     elif membership == "leave":
                         await spring_appservice.matrix_user_left(sender, room_alias)
-
 
         ################
         #
@@ -344,17 +372,17 @@ def main():
             if message.client.name == "appservice":
                 channel = message.params[0]
                 clients = message.params[1:]
-                await spring_appservice.join_room(channel, clients)
+                await spring_appservice.join_matrix_room(channel, clients)
 
         @spring_appservice.bot.on("joined")
         async def on_lobby_joined(message, user, channel):
             if message.client.name == "appservice":
-                await spring_appservice.join_room(channel, [user.username])
+                await spring_appservice.join_matrix_room(channel, [user.username])
 
         @spring_appservice.bot.on("left")
         async def on_lobby_left(message, user, channel, reason):
             if message.client.name == "appservice":
-                await spring_appservice.leave_room(channel, [user.username])
+                await spring_appservice.leave_matrix_room(channel, [user.username])
 
         @spring_appservice.bot.on("said")
         async def on_lobby_said(message, user, target, text):
