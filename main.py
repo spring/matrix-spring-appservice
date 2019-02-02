@@ -97,10 +97,15 @@ class SpringAppService(object):
         self.appservice = appserv.intent.user(appservice_account)
         await self.appservice.set_presence("online")
 
-        self.bot = await spring.connect(config["spring"]["address"],
-                                        port=config["spring"]["port"],
-                                        use_ssl=config["spring"]["ssl"],
-                                        name=config["spring"]["client_name"])
+        server = config["spring"]["address"]
+        port = config["spring"]["port"]
+        use_ssl = config["spring"]["ssl"]
+        name = config["spring"]["client_name"]
+
+        self.bot = await spring.connect(server=server,
+                                        port=port,
+                                        use_ssl=use_ssl,
+                                        name=name)
 
         self.rooms = config['appservice']['bridge']
 
@@ -164,6 +169,7 @@ class SpringAppService(object):
                         user_name = user_id.split(":")[0][1:]
 
                         user = appserv.intent.user(user=user_id)
+
                         profile = await user.get_profile(user_id=user_id)
 
                         display_name = profile.get("displayname")
@@ -326,7 +332,11 @@ class SpringAppService(object):
 
 
 def main():
-    with appserv.run(config["appservice"]["hostname"], config["appservice"]["port"]) as start:
+
+    hostname = config["appservice"]["hostname"]
+    port = config["appservice"]["port"]
+
+    with appserv.run(hostname, port) as start:
 
         ################
         #
@@ -409,6 +419,7 @@ def main():
             sender = event.get("sender", None)  # type: Optional[MatrixUserID]
             content = event.get("content", {})  # type: Dict
 
+
             log.debug("EVENT TYPE: {}".format(event_type))
             log.debug("EVENT ROOM_ID: {}".format(room_id))
             log.debug("EVENT SENDER: {}".format(sender))
@@ -446,9 +457,11 @@ def main():
         #
         ################
 
+        client_name = config['spring']['client_name']
+
         @spring_appservice.bot.on("clients")
         async def on_lobby_clients(message):
-            if message.client.name == config['spring']['client_name']:
+            if message.client.name == client_name:
                 channel = message.params[0]
                 clients = message.params[1:]
                 await spring_appservice.join_matrix_room(channel, clients)
@@ -466,23 +479,23 @@ def main():
 
         @spring_appservice.bot.on("said")
         async def on_lobby_said(message, user, target, text):
-            if message.client.name == config['spring']['client_name']:
+            if message.client.name == client_name:
                 await spring_appservice.said(user, target, text)
 
         @spring_appservice.bot.on("saidex")
         async def on_lobby_saidex(message, user, target, text):
-            if message.client.name == config['spring']['client_name']:
+            if message.client.name == client_name:
                 await spring_appservice.saidex(user, target, text)
 
         @spring_appservice.bot.on("denied")
         async def on_lobby_denied(message):
-            if message.client.name != config['spring']['client_name']:
+            if message.client.name != client_name:
                 user = message.client.name
                 # await spring_appservice.register(user)
 
         @spring_appservice.bot.on("adduser")
         async def on_lobby_adduser(message):
-            if message.client.name == config['spring']['client_name']:
+            if message.client.name == client_name:
                 username = message.params[0]
 
                 if username == "ChanServ":
@@ -494,7 +507,7 @@ def main():
 
         @spring_appservice.bot.on("removeuser")
         async def on_lobby_removeuser(message):
-            if message.client.name == config['spring']['client_name']:
+            if message.client.name == client_name:
                 username = message.params[0]
 
                 if username == "ChanServ":
@@ -506,7 +519,7 @@ def main():
 
         @spring_appservice.bot.on("logininfoend")
         async def on_lobby_logininfoend(message):
-            if message.client.name == config['spring']['client_name']:
+            if message.client.name == client_name:
                 await spring_appservice.bridge_logged_users()
 
         log.info("Startup actions complete, now running forever")
