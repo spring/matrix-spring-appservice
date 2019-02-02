@@ -174,8 +174,13 @@ class SpringAppService(object):
                         self.user_info[user_id] = dict(domain=domain,
                                                        user_name=user_name,
                                                        display_name=display_name)
+        current_user = 0
+        timeout = 5
 
         for user_id, rooms in self.user_rooms.items():
+
+            if current_user % timeout:
+                self.bot.ping()
 
             display_name = self.user_info[user_id].get("display_name")
             domain = self.user_info[user_id].get("domain")
@@ -185,6 +190,8 @@ class SpringAppService(object):
             for room in rooms:
                 for channel, room_id in room.items():
                     self.bot.join_from(channel, domain, user_name)
+
+            current_user += 1
 
     async def join_matrix_room(self, room, clients):
         room_alias = f"#spring_{room.lower()}:{config['homeserver']['domain']}"
