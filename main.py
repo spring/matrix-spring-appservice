@@ -416,11 +416,10 @@ def main():
             sender = event.get("sender", None)  # type: Optional[MatrixUserID]
             content = event.get("content", {})  # type: Dict
 
-
-            log.debug("EVENT TYPE: {}".format(event_type))
-            log.debug("EVENT ROOM_ID: {}".format(room_id))
-            log.debug("EVENT SENDER: {}".format(sender))
-            log.debug("EVENT CONTENT: {}".format(content))
+            # log.debug("EVENT TYPE: {}".format(event_type))
+            # log.debug("EVENT ROOM_ID: {}".format(room_id))
+            # log.debug("EVENT SENDER: {}".format(sender))
+            # log.debug("EVENT CONTENT: {}".format(content))
 
             if room_id == admin_room:
                 if sender in admin_list:
