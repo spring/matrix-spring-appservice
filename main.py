@@ -155,11 +155,10 @@ class SpringAppService(object):
                         await user.leave_room(room_id)
 
     async def bridge_logged_users(self):
-        print("BRIDGE")
 
         for room in self.rooms:
             for channel, room_id in room.items():
-                members = await self.appservice.get_room_members(room_id=room_id)
+                members = await appserv.intent.get_room_members(room_id=room_id)
                 for user_id in members:
                     if user_id != "@spring:jauriarts.org" and not user_id.startswith("@spring_"):
 
@@ -168,11 +167,9 @@ class SpringAppService(object):
                         domain = user_id.split(":")[1]
                         user_name = user_id.split(":")[0][1:]
 
-                        user = appserv.intent.user(user=user_id)
+                        user = await appserv.intent.get_member_info(room_id=room_id, user_id=user_id)
 
-                        profile = await user.get_profile(user_id=user_id)
-
-                        display_name = profile.get("displayname")
+                        display_name = user.get("displayname")
 
                         if display_name is None:
                             display_name = user_name
@@ -439,7 +436,6 @@ def main():
                         await spring_appservice.say_from(sender, room_id, event_id, body)
 
                     elif event_type == "m.room.member":
-                        print(sender)
                         membership = content.get("membership")
 
                         # room_alias = await get_matrix_room_alias(room_id)
@@ -469,7 +465,6 @@ def main():
         @spring_appservice.bot.on("joined")
         async def on_lobby_joined(message, user, channel):
             if user.username != "appservice":
-                print("TEST!!!!!!!!!!!!!!!!", user.username, channel)
                 await spring_appservice.join_matrix_room(channel, [user.username])
 
         @spring_appservice.bot.on("left")
