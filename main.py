@@ -308,9 +308,9 @@ class SpringAppService(object):
         self.bot.leave_from("test", domain, display_name)
         self.bot.un_bridged_client_from(domain, display_name)
 
-    async def say_from(self, matrix_username, room_id, event_id, body):
+    async def say_from(self, user_id, room_id, event_id, body):
 
-        if matrix_username.startswith("@spring_"):
+        if user_id.startswith("@spring_"):
             return
 
         room_alias = await get_matrix_room_alias(room_id)
@@ -325,8 +325,8 @@ class SpringAppService(object):
         if channel is None:
             log.info("no chanel found in room_list")
         else:
-            user_name = matrix_username.split(":")[0][1:]
-            domain = matrix_username.split(":")[1]
+            user_name = user_id.split(":")[0][1:]
+            domain = user_id.split(":")[1]
             await self.appservice.mark_read(room_id=room_id, event_id=event_id)
             self.bot.say_from(user_name, domain, channel, body)
 
