@@ -524,7 +524,8 @@ def main():
         @spring_appservice.bot.on("logininfoend")
         async def on_lobby_logininfoend(message):
             if message.client.name == client_name:
-                await spring_appservice.bridge_logged_users()
+                pass
+                # await spring_appservice.bridge_logged_users()
 
         log.info("Startup actions complete, now running forever")
         loop.run_forever()
