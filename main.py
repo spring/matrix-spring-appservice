@@ -180,14 +180,17 @@ class SpringAppService(object):
         current_user = 0
         timeout = 5
 
-        for user_id, rooms in self.user_rooms.items():
+        pprint(self.user_rooms)
 
+        for user_id, rooms in self.user_rooms.items():
             if current_user % timeout:
                 self.bot.ping()
 
             display_name = self.user_info[user_id].get("display_name")
             domain = self.user_info[user_id].get("domain")
             user_name = self.user_info[user_id].get("user_name")
+
+            log.debug("USER_ID: {} DISPLAY_NAME: {} DOMAIN: {}".format(user_name, display_name, domain))
 
             self.bot.bridged_client_from(domain, user_name, display_name)
             for room in rooms:
@@ -252,11 +255,11 @@ class SpringAppService(object):
 
         await user.send_emote(room_id, message)
 
-    async def matrix_user_joined(self, matrix_username, room_id, event_id):
+    async def matrix_user_joined(self, user_id, room_id, event_id):
 
         log.debug("MATRIX_USER_JOINED")
 
-        if matrix_username.startswith("@spring_"):
+        if user_id.startswith("@spring_"):
             return
 
         room_alias = await get_matrix_room_alias(room_id)
@@ -268,12 +271,16 @@ class SpringAppService(object):
             if room.startswith("#spring_"):
                 channel = room.split("_")[1].split(":")[0]
 
-        domain = matrix_username.split(":")[1]
-        username = matrix_username.split(":")[0][1:]
-        display_name = await appserv.intent.get_displayname(user_id=matrix_username, room_id=room_id)
+        domain = user_id.split(":")[1]
+        username = user_id.split(":")[0][1:]
+
+        user = await appserv.intent.get_member_info(room_id=room_id, user_id=user_id)
+
+        display_name = user.get("displayname")
 
         if display_name is None:
             display_name = username
+
         log.debug("DOMAIN:{} USERNAME:{} DISPLAY:{} CHANNEL:{}".format(domain, username, display_name, channel))
 
         await self.appservice.mark_read(room_id=room_id, event_id=event_id)
@@ -281,17 +288,18 @@ class SpringAppService(object):
         self.bot.bridged_client_from(domain, username, display_name)
         self.bot.join_from(channel, domain, username)
 
-    async def matrix_user_left(self, matrix_username, room_id, event_id):
+    async def matrix_user_left(self, user_id, room_id, event_id):
 
         log.debug("MATRIX_USER_LEFT")
 
-        if matrix_username.startswith("@spring_"):
+        if user_id.startswith("@spring_"):
             return
 
-        display_name = await appserv.intent.get_displayname(room_id=room_id, user_id=matrix_username, ignore_cache=True)
+        user = await appserv.intent.get_member_info(room_id=room_id, user_id=user_id)
 
-        domain = matrix_username.split(":")[1]
-        username = matrix_username.split(":")[0][1:]
+        display_name = user.get("displayname")
+        domain = user_id.split(":")[1]
+        username = user_id.split(":")[0][1:]
         if display_name is None:
             display_name = username
 
@@ -410,16 +418,18 @@ def main():
         @appserv.matrix_event_handler
         async def handle_event(event: MatrixEvent) -> None:
 
+            log.debug("HANDLE EVENT")
+
             event_type = event.get("type", "m.unknown")  # type: str
             room_id = event.get("room_id", None)  # type: Optional[MatrixRoomID]
             event_id = event.get("event_id", None)  # type: Optional[MatrixEventID]
             sender = event.get("sender", None)  # type: Optional[MatrixUserID]
             content = event.get("content", {})  # type: Dict
 
-            # log.debug("EVENT TYPE: {}".format(event_type))
-            # log.debug("EVENT ROOM_ID: {}".format(room_id))
-            # log.debug("EVENT SENDER: {}".format(sender))
-            # log.debug("EVENT CONTENT: {}".format(content))
+            log.debug("EVENT TYPE: {}".format(event_type))
+            log.debug("EVENT ROOM_ID: {}".format(room_id))
+            log.debug("EVENT SENDER: {}".format(sender))
+            log.debug("EVENT CONTENT: {}".format(content))
 
             if room_id == admin_room:
                 if sender in admin_list:
