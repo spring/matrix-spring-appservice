@@ -3,14 +3,13 @@ import logging.config
 import signal
 import sys
 import copy
-import time
+
 from collections import defaultdict
-from pprint import pprint
 
 import yaml
 
 from typing import Dict, List, Match, Optional, Set, Tuple, TYPE_CHECKING
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from matrix_client.api import MatrixHttpApi
 
@@ -180,8 +179,6 @@ class SpringAppService(object):
         current_user = 0
         timeout = 5
 
-        pprint(self.user_rooms)
-
         for user_id, rooms in self.user_rooms.items():
             if current_user % timeout:
                 self.bot.ping()
@@ -189,6 +186,10 @@ class SpringAppService(object):
             display_name = self.user_info[user_id].get("display_name")
             domain = self.user_info[user_id].get("domain")
             user_name = self.user_info[user_id].get("user_name")
+
+            if user_name.startswith("_discord"):
+                domain = "discord"
+                user_name = user_name.strip("_discord_")
 
             log.debug("USER_ID: {} DISPLAY_NAME: {} DOMAIN: {}".format(user_name, display_name, domain))
 
@@ -272,21 +273,25 @@ class SpringAppService(object):
                 channel = room.split("_")[1].split(":")[0]
 
         domain = user_id.split(":")[1]
-        username = user_id.split(":")[0][1:]
+        user_name = user_id.split(":")[0][1:]
+
+        if user_name.startswith("_discord"):
+            domain = "discord"
+            user_name = user_name.strip("_discord")
 
         user = await appserv.intent.get_member_info(room_id=room_id, user_id=user_id)
 
         display_name = user.get("displayname")
 
         if display_name is None:
-            display_name = username
+            display_name = user_name
 
-        log.debug("DOMAIN:{} USERNAME:{} DISPLAY:{} CHANNEL:{}".format(domain, username, display_name, channel))
+        log.debug("DOMAIN:{} USERNAME:{} DISPLAY:{} CHANNEL:{}".format(domain, user_name, display_name, channel))
 
         await self.appservice.mark_read(room_id=room_id, event_id=event_id)
 
-        self.bot.bridged_client_from(domain, username, display_name)
-        self.bot.join_from(channel, domain, username)
+        self.bot.bridged_client_from(domain, user_name, display_name)
+        self.bot.join_from(channel, domain, user_name)
 
     async def matrix_user_left(self, user_id, room_id, event_id):
 
@@ -299,16 +304,21 @@ class SpringAppService(object):
 
         display_name = user.get("displayname")
         domain = user_id.split(":")[1]
-        username = user_id.split(":")[0][1:]
+        user_name = user_id.split(":")[0][1:]
+
+        if user_name.startswith("_discord"):
+            domain = "discord"
+            user_name = user_name.strip("_discord_")
+
         if display_name is None:
-            display_name = username
+            display_name = user_name
 
         await self.appservice.mark_read(room_id=room_id, event_id=event_id)
 
         self.bot.leave_from("test", domain, display_name)
         self.bot.un_bridged_client_from(domain, display_name)
 
-    async def say_from(self, user_id, room_id, event_id, body):
+    async def say_from(self, user_id, room_id, event_id, body, emote=False):
 
         if user_id.startswith("@spring_"):
             return
@@ -327,6 +337,11 @@ class SpringAppService(object):
         else:
             user_name = user_id.split(":")[0][1:]
             domain = user_id.split(":")[1]
+
+            if user_name.startswith("_discord"):
+                domain = "discord"
+                user_name = user_name.strip("_discord_")
+
             await self.appservice.mark_read(room_id=room_id, event_id=event_id)
             self.bot.say_from(user_name, domain, channel, body)
 
@@ -440,16 +455,26 @@ def main():
             else:
                 if not sender.startswith("@spring_"):
                     if event_type == "m.room.message":
-                        log.debug("ROOM MESSAGE")
+
+                        msg_type = content.get("msgtype")
+
                         body = content.get("body")
-                        await spring_appservice.say_from(sender, room_id, event_id, body)
+                        info = content.get("info")
+
+                        if msg_type == "m.text":
+                            await spring_appservice.say_from(sender, room_id, event_id, body)
+                        elif msg_type == "m.emote":
+                            await spring_appservice.say_from(sender, room_id, event_id, body, emote=True)
+                        elif msg_type == "m.image":
+                            mxc_url = event['content']['url']
+                            o = urlparse(mxc_url)
+                            domain = o.netloc
+                            pic_code = o.path
+                            url = "https://{0}/_matrix/media/v1/download/{0}{1}".format(domain, pic_code)
+                            await spring_appservice.say_from(sender, room_id, event_id, url)
 
                     elif event_type == "m.room.member":
                         membership = content.get("membership")
-
-                        # room_alias = await get_matrix_room_alias(room_id)
-                        log.debug(membership)
-                        log.debug("EVENT MEMBERSHIP {}".format(membership))
 
                         if membership == "join":
                             await spring_appservice.matrix_user_joined(sender, room_id, event_id)
