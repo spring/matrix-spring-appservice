@@ -187,6 +187,10 @@ class SpringAppService(object):
             domain = self.user_info[user_id].get("domain")
             user_name = self.user_info[user_id].get("user_name")
 
+            if display_name:
+                display_name = display_name.strip('@')
+                display_name = display_name.replace('-', '"')
+
             if user_name.startswith("_discord"):
                 domain = "discord"
                 user_name = user_name.strip("_discord_")
