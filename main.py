@@ -4,6 +4,8 @@ import signal
 import sys
 import copy
 
+from asyncblink import signal as as_signal
+
 from collections import defaultdict
 
 import yaml
@@ -128,7 +130,7 @@ class SpringAppService(object):
         user = appserv.intent.user(matrix_id)
 
         task = [user.set_presence("online"),
-                user.set_display_name(f"{username} (Lobby)")]
+                user.set_display_name(username)]
 
         loop.run_until_complete(asyncio.gather(*task, loop=loop))
 
@@ -159,7 +161,7 @@ class SpringAppService(object):
             for channel, room_id in room.items():
                 members = await appserv.intent.get_room_members(room_id=room_id)
                 for user_id in members:
-                    if user_id != "@spring:jauriarts.org" and not user_id.startswith("@spring_"):
+                    if user_id != "@spring:jauriarts.org" and user_id != "@_discord_bot:jauriarts.org" and not user_id.startswith("@spring_"):
 
                         self.user_rooms[user_id].append(room)
 
@@ -176,12 +178,14 @@ class SpringAppService(object):
                         self.user_info[user_id] = dict(domain=domain,
                                                        user_name=user_name,
                                                        display_name=display_name)
-        current_user = 0
-        timeout = 5
+
+        bridge_signal = as_signal('bridg-signal')
+        join_sginal = as_signal('join-signal')
+
+        bridge_signal.connect(self.bridged_client)
+        join_sginal.connect(self.join_from)
 
         for user_id, rooms in self.user_rooms.items():
-            if current_user % timeout:
-                self.bot.ping()
 
             display_name = self.user_info[user_id].get("display_name")
             domain = self.user_info[user_id].get("domain")
@@ -190,6 +194,8 @@ class SpringAppService(object):
             if display_name:
                 display_name = display_name.strip('@')
                 display_name = display_name.replace('-', '"')
+                if len(display_name) < 15:
+                    display_name = display_name[:15]
 
             if user_name.startswith("_discord"):
                 domain = "discord"
@@ -197,12 +203,17 @@ class SpringAppService(object):
 
             log.debug("USER_ID: {} DISPLAY_NAME: {} DOMAIN: {}".format(user_name, display_name, domain))
 
-            self.bot.bridged_client_from(domain, user_name, display_name)
+            bridge_signal.send("initial-bridging", domain=domain, user_name=user_name, display_name=display_name)
+
             for room in rooms:
                 for channel, room_id in room.items():
-                    self.bot.join_from(channel, domain, user_name)
+                    join_sginal.send("initial-joining", channel=channel, domain=domain, user_name=user_name)
 
-            current_user += 1
+    async def bridged_client(self, sender, domain, user_name, display_name):
+        self.bot.bridged_client_from(domain, user_name, display_name)
+
+    async def join_from(self, sender, channel, domain, user_name):
+        self.bot.join_from(channel, domain, user_name)
 
     async def join_matrix_room(self, room, clients):
         room_alias = f"#spring_{room.lower()}:{config['homeserver']['domain']}"
@@ -260,9 +271,7 @@ class SpringAppService(object):
 
         await user.send_emote(room_id, message)
 
-    async def matrix_user_joined(self, user_id, room_id, event_id):
-
-        log.debug("MATRIX_USER_JOINED")
+    async def matrix_user_joined(self, user_id, room_id, event_id=None):
 
         if user_id.startswith("@spring_"):
             return
@@ -290,16 +299,18 @@ class SpringAppService(object):
         if display_name is None:
             display_name = user_name
 
+        if len(display_name) < 15:
+            display_name = display_name[:15]
+
         log.debug("DOMAIN:{} USERNAME:{} DISPLAY:{} CHANNEL:{}".format(domain, user_name, display_name, channel))
 
-        await self.appservice.mark_read(room_id=room_id, event_id=event_id)
+        if event_id:
+            await self.appservice.mark_read(room_id=room_id, event_id=event_id)
 
         self.bot.bridged_client_from(domain, user_name, display_name)
         self.bot.join_from(channel, domain, user_name)
 
     async def matrix_user_left(self, user_id, room_id, event_id):
-
-        log.debug("MATRIX_USER_LEFT")
 
         if user_id.startswith("@spring_"):
             return
