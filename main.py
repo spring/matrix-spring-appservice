@@ -193,15 +193,13 @@ class SpringAppService(object):
 
             if display_name:
                 display_name = display_name.strip('@')
-                display_name = display_name.replace('-', '"')
+                display_name = display_name.replace('-', '_')
                 if len(display_name) < 15:
                     display_name = display_name[:15]
 
             if user_name.startswith("_discord"):
                 domain = "discord"
                 user_name = user_name.strip("_discord_")
-
-            log.debug("USER_ID: {} DISPLAY_NAME: {} DOMAIN: {}".format(user_name, display_name, domain))
 
             bridge_signal.send("initial-bridging", domain=domain, user_name=user_name, display_name=display_name)
 
@@ -296,13 +294,11 @@ class SpringAppService(object):
 
         display_name = user.get("displayname")
 
-        if display_name is None:
-            display_name = user_name
-
-        if len(display_name) < 15:
-            display_name = display_name[:15]
-
-        log.debug("DOMAIN:{} USERNAME:{} DISPLAY:{} CHANNEL:{}".format(domain, user_name, display_name, channel))
+        if display_name:
+            display_name = display_name.strip('@')
+            display_name = display_name.replace('-', '_')
+            if len(display_name) < 15:
+                display_name = display_name[:15]
 
         if event_id:
             await self.appservice.mark_read(room_id=room_id, event_id=event_id)
