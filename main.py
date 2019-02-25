@@ -191,15 +191,22 @@ class SpringAppService(object):
             domain = self.user_info[user_id].get("domain")
             user_name = self.user_info[user_id].get("user_name")
 
-            if display_name:
-                display_name = display_name.strip('@')
-                display_name = display_name.replace('-', '_')
-                if len(display_name) < 15:
-                    display_name = display_name[:15]
-
             if user_name.startswith("_discord"):
                 domain = "discord"
-                user_name = user_name.strip("_discord_")
+                user_name = user_name.lstrip("_discord_")
+
+            elif user_name.startswith("freenode"):
+                domain = "freenode.org"
+                user_name = user_name.lstrip("freenode_")
+
+            if display_name:
+                display_name = display_name.lstrip('@')
+                display_name = display_name.replace('-', '_')
+                if len(display_name) > 15:
+                    display_name = display_name[:15]
+            else:
+                display_name = "none"
+
 
             bridge_signal.send("initial-bridging", domain=domain, user_name=user_name, display_name=display_name)
 
@@ -288,17 +295,23 @@ class SpringAppService(object):
 
         if user_name.startswith("_discord"):
             domain = "discord"
-            user_name = user_name.strip("_discord")
+            user_name = user_name.lstrip("_discord")
+
+        if user_name.startswith("freenode"):
+            domain = "freenode.org"
+            user_name = user_name.lstrip("freenode_")
 
         user = await appserv.intent.get_member_info(room_id=room_id, user_id=user_id)
 
         display_name = user.get("displayname")
 
         if display_name:
-            display_name = display_name.strip('@')
+            display_name = display_name.lstrip('@')
             display_name = display_name.replace('-', '_')
-            if len(display_name) < 15:
+            if len(display_name) > 15:
                 display_name = display_name[:15]
+        else:
+            display_name = "none"
 
         if event_id:
             await self.appservice.mark_read(room_id=room_id, event_id=event_id)
@@ -319,7 +332,7 @@ class SpringAppService(object):
 
         if user_name.startswith("_discord"):
             domain = "discord"
-            user_name = user_name.strip("_discord_")
+            user_name = user_name.lstrip("_discord_")
 
         if display_name is None:
             display_name = user_name
@@ -351,7 +364,7 @@ class SpringAppService(object):
 
             if user_name.startswith("_discord"):
                 domain = "discord"
-                user_name = user_name.strip("_discord_")
+                user_name = user_name.lstrip("_discord_")
 
             await self.appservice.mark_read(room_id=room_id, event_id=event_id)
             self.bot.say_from(user_name, domain, channel, body)
@@ -557,8 +570,8 @@ def main():
 
                 await spring_appservice.logout_matrix_account(username)
 
-        @spring_appservice.bot.on("logininfoend")
-        async def on_lobby_logininfoend(message):
+        @spring_appservice.bot.on("accepted")
+        async def on_lobby_accepted(message):
             if message.client.name == client_name:
                 await spring_appservice.bridge_logged_users()
 
