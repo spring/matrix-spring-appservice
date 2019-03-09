@@ -3,3 +3,4 @@ git+https://github.com/tulir/mautrix-appservice-python.git
 sqlalchemy
 PyYAML
 asyncblink
+future-fstrings
