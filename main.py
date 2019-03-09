@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 # -*- coding: future_fstrings -*-
+# -*- coding: utf-8 -*-
 
 import asyncio
 import logging.config
