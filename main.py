@@ -29,7 +29,7 @@ with open("config.yaml", 'r') as yml_file:
 
 logging.config.dictConfig(copy.deepcopy(config["logging"]))
 log = logging.getLogger("matrix-spring.init")  # type: logging.Logger
-log.debug(f"Initializing matrix-spring")
+log.debug("Initializing matrix-spring")
 
 loop = asyncio.get_event_loop()  # type: asyncio.AbstractEventLoop
 
