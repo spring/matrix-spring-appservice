@@ -324,27 +324,50 @@ class SpringAppService(object):
         self.bot.join_from(channel, domain, user_name)
 
     async def matrix_user_left(self, user_id, room_id, event_id):
+        print("MATRIX USER LEAVES")
 
         if user_id.startswith("@spring_"):
             return
 
-        user = await appserv.intent.get_member_info(room_id=room_id, user_id=user_id)
+        room_alias = await get_matrix_room_alias(room_id)
 
-        display_name = user.get("displayname")
+        room_list = room_alias["aliases"]
+
+        channel = None
+        for room in room_list:
+            if room.startswith("#spring_"):
+                channel = room.split("_")[1].split(":")[0]
+
         domain = user_id.split(":")[1]
         user_name = user_id.split(":")[0][1:]
 
         if user_name.startswith("_discord"):
             domain = "discord"
-            user_name = user_name.lstrip("_discord_")
+            user_name = user_name.lstrip("_discord")
 
-        if display_name is None:
-            display_name = user_name
+        if user_name.startswith("freenode"):
+            domain = "freenode.org"
+            user_name = user_name.lstrip("freenode_")
 
-        await self.appservice.mark_read(room_id=room_id, event_id=event_id)
+        user = await appserv.intent.get_member_info(room_id=room_id, user_id=user_id)
+
+        display_name = user.get("displayname")
+
+        if display_name:
+            display_name = display_name.lstrip('@')
+            display_name = display_name.replace('-', '_')
+            if len(display_name) > 15:
+                display_name = display_name[:15]
+        else:
+            display_name = "none"
+
+        if event_id:
+            await self.appservice.mark_read(room_id=room_id, event_id=event_id)
 
         self.bot.leave_from("test", domain, display_name)
         self.bot.un_bridged_client_from(domain, display_name)
+
+        print("MATRIX USER LEAVES SUSSCESS")
 
     async def say_from(self, user_id, room_id, event_id, body, emote=False):
 
@@ -531,6 +554,10 @@ def main():
 
         @spring_appservice.bot.on("left")
         async def on_lobby_left(message, user, channel, reason):
+            log.debug("User {} left {} reason {}".format(user, channel, reason))
+            if channel.startswith("__battle__"):
+                return
+
             if user.username != "appservice":
                 await spring_appservice.leave_matrix_room(channel, [user.username])
 
