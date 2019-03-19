@@ -58,7 +58,6 @@ async def get_matrix_room_alias(room):
     room_alias = await appserv.intent.client.request(
         "GET",
         f"/rooms/{quote(room, safe='')}/state/m.room.aliases/{config['homeserver']['domain']}")
-
     return room_alias
 
 
@@ -93,6 +92,7 @@ class SpringAppService(object):
         self.user_rooms = defaultdict(list)
         self.user_info = dict()
         self.appservice = None
+        self.presence_timmer = None
 
     async def run(self):
 
@@ -132,23 +132,36 @@ class SpringAppService(object):
         self.bot.login(config["spring"]["bot_username"],
                        config["spring"]["bot_password"])
 
+    def _presence_timer(self, user):
+        log.debug("SET presence timmer for user : {}".format(user))
+
+        task = [user.set_presence("online"),
+                user.set_display_name(user)]
+
+        loop.run_until_complete(asyncio.gather(*task, loop=loop))
+
     async def leave_matrix_rooms(self, username):
         user = appserv.intent.user(username)
         for room in await user.get_joined_rooms():
             await user.leave_room(room)
 
-    async def login_matrix_account(self, username):
-        matrix_id = f"@spring_{username.lower()}:{config['homeserver']['domain']}"
+    async def login_matrix_account(self, user_name):
+        domain = config['homeserver']['domain']
+        matrix_id = f"@spring_{user_name.lower()}:{domain}"
         user = appserv.intent.user(matrix_id)
 
         task = [user.set_presence("online"),
-                user.set_display_name(username)]
+                user.set_display_name(user_name)]
 
         loop.run_until_complete(asyncio.gather(*task, loop=loop))
 
+        self.presence_timmer = asyncio.get_event_loop().call_later(58, self._presence_timer, user)
+
+        self.bot.bridged_client_from(domain, user_name.lower, user_name)
+
     async def logout_matrix_account(self, username):
-        log.debug("logout matrix account {}".format(username))
-        matrix_id = f"@spring_{username.lower()}:{config['homeserver']['domain']}"
+        domain = config['homeserver']['domain']
+        matrix_id = f"@spring_{username.lower()}:{domain}"
         user = appserv.intent.user(matrix_id)
 
         rooms = await user.get_joined_rooms()
@@ -157,7 +170,8 @@ class SpringAppService(object):
             await user.leave_room(room_id=room_id)
 
         await user.set_presence("offline")
-        log.debug("logout matrix account {} SUCCESS".format(username))
+        self.presence_timmer.cancel()
+        self.bot.un_bridged_client_from(domain, username)
 
     async def clean_matrix_rooms(self):
 
@@ -257,7 +271,6 @@ class SpringAppService(object):
             else:
                 display_name = "none"
 
-
             log.debug("user_name = {}".format(user_name))
             log.debug("display_name = {}".format(display_name))
             log.debug("domain = {}".format(domain))
@@ -273,7 +286,9 @@ class SpringAppService(object):
             log.debug("##############################")
 
     async def join_matrix_room(self, room, clients):
-        room_alias = f"#spring_{room.lower()}:{config['homeserver']['domain']}"
+
+        room_id = self.rooms[room]["room_id"]
+        log.debug(room_id)
 
         for client in clients:
             if client != "appservice":
@@ -281,24 +296,28 @@ class SpringAppService(object):
                     matrix_id = f"@spring_{client.lower()}:{config['homeserver']['domain']}"
                     user = appserv.intent.user(matrix_id)
 
-                    await user.join_room(room_alias)
+                    await user.join_room(room_id=room_id)
 
     async def leave_matrix_room(self, room, clients):
-        log.debug("lreaving matrix room left from lobby")
+        log.debug("leaving matrix room left from lobby")
         log.debug(room)
         for client in clients:
             log.debug(client)
             if client != "spring":
-                matrix_id = f"@spring_{client.lower()}:{config['homeserver']['domain']}"
-                room_alias = f"#spring_{room}:{config['homeserver']['domain']}"
+                log.debug("CLIENT {}".format(client))
 
+                matrix_id = f"@spring_{client.lower()}:{config['homeserver']['domain']}"
                 log.debug(matrix_id)
-                log.debug(room_alias)
+
+                room_id = self.rooms[room]["room_id"]
+                log.debug(room_id)
 
                 user = appserv.intent.user(matrix_id)
-                room_id = get_matrix_room_id(room_alias)
-                log.debug(room_id)
+
+                log.debug(user)
                 await user.leave_room(room_id=room_id)
+
+        log.debug("succes leaved matrix room left from lobby")
 
     async def create_matrix_room(self, room):
         room_alias = f"#spring_{room}:{config['homeserver']['domain']}"
@@ -336,74 +355,13 @@ class SpringAppService(object):
 
     async def matrix_user_joined(self, user_id, room_id, event_id=None):
 
-        if user_id.startswith("@spring_"):
-            return
-
-        room_alias = await get_matrix_room_alias(room_id)
-
-        room_list = room_alias["aliases"]
-
-        channel = None
-        for room in room_list:
-            if room.startswith("#spring_"):
-                channel = room.split("_")[1].split(":")[0]
-
-        domain = user_id.split(":")[1]
-        user_name = user_id.split(":")[0][1:]
-
-        if user_name.startswith("_discord"):
-            domain = "discord"
-            user_name = user_name.lstrip("_discord")
-
-        if user_name.startswith("freenode"):
-            domain = "freenode.org"
-            user_name = user_name.lstrip("freenode_")
-
-        user = await appserv.intent.get_member_info(room_id=room_id, user_id=user_id)
-
-        display_name = user.get("displayname")
-
-        if display_name:
-            display_name = display_name.lstrip('@')
-            display_name = display_name.replace('-', '_')
-            if len(display_name) > 15:
-                display_name = display_name[:15]
-        else:
-            display_name = "none"
-
-        if event_id:
-            await self.appservice.mark_read(room_id=room_id, event_id=event_id)
-
-        self.bot.bridged_client_from(domain, user_name, display_name)
-        self.bot.join_from(channel, domain, user_name)
-
-    async def matrix_user_left(self, user_id, room_id, event_id):
-        print("MATRIX USER LEAVES")
-
         if user_id.startswith("@spring_") or user_id == "@spring:jauriarts.org":
             return
 
-        room_alias = await get_matrix_room_alias(room_id)
-
-        room_list = room_alias["aliases"]
-
         channel = None
-        for room in room_list:
-            if room.startswith("#spring_"):
-                channel = room.split("_")[1].split(":")[0]
-
-        domain = user_id.split(":")[1]
-        user_name = user_id.split(":")[0][1:]
-
-        if user_name.startswith("_discord"):
-            domain = "discord"
-            user_name = user_name.lstrip("_discord")
-
-        if user_name.startswith("freenode"):
-            domain = "freenode.org"
-            user_name = user_name.lstrip("freenode_")
-
-        print(self.user_info)
+        for key in self.rooms:
+            if self.rooms[key]["room_id"] == room_id:
+                channel = key
 
         display_name = self.user_info[user_id].get("display_name")
         domain = self.user_info[user_id].get("domain")
@@ -412,10 +370,33 @@ class SpringAppService(object):
         if event_id:
             await self.appservice.mark_read(room_id=room_id, event_id=event_id)
 
-        self.bot.leave_from("test", domain, display_name)
-        self.bot.un_bridged_client_from(domain, display_name)
+        log.debug(channel)
 
-        print("MATRIX USER LEAVES SUSSCESS")
+        self.bot.join_from(channel, domain, user_name)
+
+    async def matrix_user_left(self, user_id, room_id, event_id):
+        log.debug("MATRIX USER LEAVES")
+
+        if user_id.startswith("@spring_") or user_id == "@spring:jauriarts.org":
+            return
+
+        channel = None
+        for key in self.rooms:
+            if self.rooms[key]["room_id"] == room_id:
+                channel = key
+
+        display_name = self.user_info[user_id].get("display_name")
+        domain = self.user_info[user_id].get("domain")
+        user_name = self.user_info[user_id].get("user_name")
+
+        if event_id:
+            await self.appservice.mark_read(room_id=room_id, event_id=event_id)
+
+        log.debug(channel)
+
+        self.bot.leave_from(channel, domain, display_name)
+
+        log.debug("MATRIX USER LEAVES SUSSCESS")
 
     async def say_from(self, user_id, room_id, event_id, body, emote=False):
 
