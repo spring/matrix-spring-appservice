@@ -266,6 +266,7 @@ class SpringAppService(object):
             if display_name:
                 display_name = display_name.lstrip('@')
                 display_name = display_name.replace('-', '_')
+                display_name = display_name.replace('.', '_')
                 if len(display_name) > 15:
                     display_name = display_name[:15]
             else:
