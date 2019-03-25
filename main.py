@@ -331,25 +331,24 @@ class SpringAppService(object):
 
     async def said(self, user, room, message):
         matrix_id = f"@spring_{user.lower()}:{config['homeserver']['domain']}"
-        room_alias = f"#spring_{room}:{config['homeserver']['domain']}"
 
         if matrix_id == "@spring_glenda:jaurarts.org":
             return
 
-        room_id = get_matrix_room_id(room_alias)
+        room_id = self.rooms[room]["room_id"]
+
         user = appserv.intent.user(matrix_id)
-        log.debug("SEND MESSAGE TO THE MATRIX")
 
         await user.send_text(room_id, message)
 
     async def saidex(self, user, room, message):
         matrix_id = f"@spring_{user.lower()}:{config['homeserver']['domain']}"
-        room_alias = f"#spring_{room}:{config['homeserver']['domain']}"
 
         if matrix_id == "@spring_glenda:jaurarts.org":
             return
 
-        room_id = get_matrix_room_id(room_alias)
+        room_id = self.rooms[room]["room_id"]
+
         user = appserv.intent.user(matrix_id)
 
         await user.send_emote(room_id, message)
