@@ -126,6 +126,9 @@ class SpringAppService(object):
                       )
             if room_enabled:
                 self.bot.channels_to_join.append(channel)
+                await self.appservice.join_room(room_id[0])
+            else:
+                await self.appservice.leave_room(room_id[0])
 
         self.bot.login(config["spring"]["bot_username"],
                        config["spring"]["bot_password"])
