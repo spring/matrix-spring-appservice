@@ -8,8 +8,6 @@ import signal
 import sys
 import copy
 
-from asyncblink import signal as as_signal
-
 from collections import defaultdict
 
 import yaml
