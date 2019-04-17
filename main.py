@@ -132,7 +132,7 @@ class SpringAppService(object):
             room_enabled = room_data["enabled"]
             if room_enabled:
 
-                local_part = "#spring_{}".format(room_name)
+                local_part = "spring_{}".format(room_name)
                 await self.appservice.add_room_alias(room_id[0], local_part)
                 await self.appservice.join_room(room_id[0])
 
