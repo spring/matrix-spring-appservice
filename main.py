@@ -133,7 +133,7 @@ class SpringAppService(object):
                        config["spring"]["bot_password"])
 
         for room_id in self.bot.channels_to_join:
-            self.appservice.join_room(room_id)
+            await self.appservice.join_room(room_id)
 
 
     def _presence_timer(self, user):
