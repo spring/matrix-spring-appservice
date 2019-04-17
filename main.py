@@ -164,7 +164,7 @@ class SpringAppService(object):
 
         loop.run_until_complete(asyncio.gather(*task, loop=loop))
 
-        self.presence_timmer = asyncio.get_event_loop().call_later(58, self._presence_timer, user)
+        # self.presence_timmer = asyncio.get_event_loop().call_later(58, self._presence_timer, user)
 
         self.bot.bridged_client_from(domain, user_name.lower, user_name)
 
