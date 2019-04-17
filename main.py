@@ -128,13 +128,10 @@ class SpringAppService(object):
                 self.bot.channels_to_join.append(channel)
                 local_part = "#spring_{}".format(room_name)
                 await self.appservice.add_room_alias(room_id[0], local_part)
+                await self.appservice.join_room(room_id)
 
         self.bot.login(config["spring"]["bot_username"],
-                       config["spring"]["bot_password"])
-
-        for room_id in self.bot.channels_to_join:
-            await self.appservice.join_room(room_id)
-
+                       config["spring"]["bot_password"])¡
 
     def _presence_timer(self, user):
         log.debug("SET presence timmer for user : {}".format(user))
