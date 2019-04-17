@@ -131,7 +131,7 @@ class SpringAppService(object):
                 await self.appservice.join_room(room_id)
 
         self.bot.login(config["spring"]["bot_username"],
-                       config["spring"]["bot_password"])¡
+                       config["spring"]["bot_password"])
 
     def _presence_timer(self, user):
         log.debug("SET presence timmer for user : {}".format(user))
