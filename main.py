@@ -211,18 +211,17 @@ class SpringAppService(object):
                 log.debug("channel : {}".format(channel))
                 log.debug("room_id : {}".format(room_id))
 
-                a_user = appserv.intent.user("@spring:{}".format(config['homeserver']['domain']))
-                members = await a_user.get_room_members(room_id=room_id)
+                members = await self.appservice.get_room_members(room_id=room_id)
 
                 for user_id in members:
                     if user_id == "@appservice:springrts.com":
-                        pass
+                        continue
                     if user_id == "@spring:jauriarts.org":
-                        pass
+                        continue
                     elif user_id == "@_discord_bot:jauriarts.org":
-                        pass
+                        continue
                     elif user_id.startswith("@spring_"):
-                        pass
+                        continue
                     else:
                         self.user_rooms[user_id].append({"channel": channel, "room_id": room_id})
 
