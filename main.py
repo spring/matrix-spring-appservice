@@ -278,7 +278,7 @@ class SpringAppService(object):
                 if len(display_name) > 15:
                     display_name = display_name[:15]
             else:
-                display_name = "none"
+                display_name = user_name
 
             log.debug("user_name = {}".format(user_name))
             log.debug("display_name = {}".format(display_name))
