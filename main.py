@@ -41,7 +41,7 @@ appserv = AppService(config["homeserver"]["address"], config["homeserver"]["doma
                      config["appservice"]["as_token"], config["appservice"]["hs_token"],
                      config["appservice"]["bot_username"], log="spring_as", loop=loop,
                      verify_ssl=config["homeserver"]["verify_ssl"], state_store=state_store,
-                     real_user_content_key="com.springrts.matrix.puppet",
+                     real_user_content_key="org.jauriarts.matrix.puppet",
                      aiohttp_params={"client_max_size": config["appservice"]["max_body_size"] * mebibyte})
 
 DOMAINS = ["[matrix]", "[jauriarts]", "[springrts]"]
@@ -60,13 +60,13 @@ async def get_matrix_room_alias(room):
 
 
 def remove_matrix_room(room):
-    matrix_api.remove_room_alias(f"#spring_{room}:{config['homeserver']['domain']}")
+    matrix_api.remove_room_alias(f"#{config['appservice']['namespace']}_{room}:{config['homeserver']['domain']}")
 
 
 async def get_users_in_matrix_rooms():
     rooms = await appserv.intent.get_joined_rooms()
     log.debug(rooms)
-    spring_users_in_room = dict()
+    users_in_room = dict()
 
     for room in rooms:
         matrix_users = await appserv.intent.get_room_members(room)
@@ -74,9 +74,9 @@ async def get_users_in_matrix_rooms():
         for user in matrix_users:
             if not user.startswith("@spring"):
                 log.debug(user)
-                spring_users_in_room[user] = room
+                users_in_room[user] = room
 
-    return spring_users_in_room
+    return users_in_room
 
 
 class SpringAppService(object):
@@ -115,15 +115,11 @@ class SpringAppService(object):
         log.debug("### CONFIG ROOMS ###")
 
         for room_name, room_data in self.rooms.items():
-            channel = "#{}".format(room_name)
+            channel = f"#{room_name}"
             room_id = room_data["room_id"],
             room_enabled = room_data["enabled"]
 
-            log.debug("{} channel : {} room_name : {} room_id : {}".format(room_enabled,
-                                                                           channel,
-                                                                           room_name,
-                                                                           room_id)
-                      )
+            log.debug(f"{room_enabled} channel : {channel} room_name : {room_name} room_id : {room_id}")
             if room_enabled:
                 self.bot.channels_to_join.append(channel)
 
@@ -131,7 +127,8 @@ class SpringAppService(object):
         #     room_id = room_data["room_id"],
         #     room_enabled = room_data["enabled"]
         #     if room_enabled:
-        #         local_part = "spring_{}".format(room_name)
+        #         namespace = config['appservice']['namespace']
+        #         local_part = f"{namespace}_{room_name}"
         #         await self.appservice.add_room_alias(room_id[0], local_part)
         #         await self.appservice.join_room(room_id[0])
 
@@ -142,7 +139,7 @@ class SpringAppService(object):
                        bot_password)
 
     def _presence_timer(self, user):
-        log.debug("SET presence timmer for user : {}".format(user))
+        log.debug(f"SET presence timmer for user : {user}")
 
         task = [user.set_presence("online"),
                 user.set_display_name(user)]
@@ -156,7 +153,8 @@ class SpringAppService(object):
 
     async def login_matrix_account(self, user_name):
         domain = config['homeserver']['domain']
-        matrix_id = f"@spring_{user_name.lower()}:{domain}"
+        namespace = config['appservice']['namespace']
+        matrix_id = f"@{namespace}_{user_name.lower()}:{domain}"
         user = appserv.intent.user(matrix_id)
 
         task = [user.set_presence("online"),
@@ -168,9 +166,10 @@ class SpringAppService(object):
 
         self.bot.bridged_client_from(domain, user_name.lower, user_name)
 
-    async def logout_matrix_account(self, username):
+    async def logout_matrix_account(self, user_name):
         domain = config['homeserver']['domain']
-        matrix_id = f"@spring_{username.lower()}:{domain}"
+        namespace = config['appservice']['namespace']
+        matrix_id = f"@{namespace}_{user_name.lower()}:{domain}"
         user = appserv.intent.user(matrix_id)
 
         rooms = await user.get_joined_rooms()
@@ -180,7 +179,7 @@ class SpringAppService(object):
 
         await user.set_presence("offline")
         self.presence_timmer.cancel()
-        self.bot.un_bridged_client_from(domain, username)
+        self.bot.un_bridged_client_from(domain, user_name)
 
     async def clean_matrix_rooms(self):
 
@@ -189,13 +188,14 @@ class SpringAppService(object):
             room_id = room_data["room_id"]
             enabled = room_data["enabled"]
 
-            log.debug("removing logged users from {}".format(channel))
+            log.debug(f"removing logged users from {channel}")
 
             members = await appserv.intent.get_room_members(room_id=room_id)
 
             for member in members:
-                if member.startswith("@spring_"):
-                    log.debug("user {}".format(member))
+                namespace = config['appservice']['namespace']
+                if member.startswith(f"@{namespace}_"):
+                    log.debug(f"user {member}")
                     user = appserv.intent.user(user=member)
                     await user.leave_room(room_id)
 
@@ -208,19 +208,18 @@ class SpringAppService(object):
 
             if enabled:
                 log.debug("############### ROOM ENABLED ###############")
-                log.debug("channel : {}".format(channel))
-                log.debug("room_id : {}".format(room_id))
+                log.debug(f"channel : {channel}")
+                log.debug(f"room_id : {room_id}")
 
                 members = await self.appservice.get_room_members(room_id=room_id)
 
+                domain = config['homeserver']['domain']
+                namespace = config['appservice']['namespace']
+
                 for user_id in members:
-                    if user_id == "@appservice:springrts.com":
+                    if user_id == f"@appservice:{domain}":
                         continue
-                    if user_id == "@spring:jauriarts.org":
-                        continue
-                    elif user_id == "@_discord_bot:jauriarts.org":
-                        continue
-                    elif user_id.startswith("@spring_"):
+                    elif user_id.startswith(f"@{namespace}_"):
                         continue
                     else:
                         self.user_rooms[user_id].append({"channel": channel, "room_id": room_id})
@@ -245,8 +244,8 @@ class SpringAppService(object):
             else:
 
                 log.debug("############### ROOM DISABLED ###############")
-                log.debug("channel : {}".format(channel))
-                log.debug("room_id : {}".format(room_id))
+                log.debug(f"channel : {channel}")
+                log.debug(f"room_id : {room_id}")
 
             log.debug("#############################################")
             log.debug("")
@@ -259,9 +258,9 @@ class SpringAppService(object):
             domain = self.user_info[user_id].get("domain")
             user_name = self.user_info[user_id].get("user_name")
 
-            log.debug("user_name = {}".format(user_name))
-            log.debug("display_name = {}".format(display_name))
-            log.debug("domain = {}".format(domain))
+            log.debug(f"user_name = {user_name}")
+            log.debug(f"display_name = {display_name}")
+            log.debug(f"domain = {domain}")
 
             if user_name.startswith("_discord"):
                 domain = "discord"
@@ -280,16 +279,16 @@ class SpringAppService(object):
             else:
                 display_name = user_name
 
-            log.debug("user_name = {}".format(user_name))
-            log.debug("display_name = {}".format(display_name))
-            log.debug("domain = {}".format(domain))
+            log.debug(f"user_name = {user_name}")
+            log.debug(f"display_name = {display_name}")
+            log.debug(f"domain = {domain}")
 
-            log.debug("Bridging user {}, domain {}. displayname {}".format(user_name, domain, display_name))
+            log.debug(f"Bridging user {user_name}, domain {domain}. displayname {display_name}")
             self.bot.bridged_client_from(domain, user_name, display_name)
 
             for room in rooms:
                 channel = room["channel"]
-                log.debug("Join channel {}, user {},  domain {}".format(channel, user_name, domain))
+                log.debug(f"Join channel {channel}, user {user_name},  domain {domain}")
                 self.bot.join_from(channel, domain, user_name)
 
             log.debug("##############################")
@@ -301,11 +300,12 @@ class SpringAppService(object):
 
         for client in clients:
             if client != "appservice":
-                if not any(domain in client for domain in DOMAINS):
-                    matrix_id = f"@spring_{client.lower()}:{config['homeserver']['domain']}"
-                    user = appserv.intent.user(matrix_id)
+                domain = config['homeserver']['domain']
+                namespace = config['appservice']['namespace']
+                matrix_id = f"@{namespace}_{client.lower()}:{domain}"
+                user = appserv.intent.user(matrix_id)
 
-                    await user.join_room(room_id=room_id)
+                await user.join_room(room_id=room_id)
 
     async def leave_matrix_room(self, room, clients):
         log.debug("leaving matrix room left from lobby")
@@ -313,9 +313,12 @@ class SpringAppService(object):
         for client in clients:
             log.debug(client)
             if client != "spring":
-                log.debug("CLIENT {}".format(client))
+                log.debug(f"CLIENT {client}")
 
-                matrix_id = f"@spring_{client.lower()}:{config['homeserver']['domain']}"
+                domain = config['homeserver']['domain']
+                namespace = config['appservice']['namespace']
+
+                matrix_id = f"@{namespace}_{client.lower()}:{domain}"
                 log.debug(matrix_id)
 
                 room_id = self.rooms[room]["room_id"]
@@ -329,7 +332,11 @@ class SpringAppService(object):
         log.debug("succes leaved matrix room left from lobby")
 
     async def create_matrix_room(self, room):
-        room_alias = f"#spring_{room}:{config['homeserver']['domain']}"
+
+        domain = config['homeserver']['domain']
+        namespace = config['appservice']['namespace']
+
+        room_alias = f"#{namespace}_{room}:{domain}"
         try:
             room_id = await appserv.intent.create_room(alias=room_alias, is_public=True)
             await appserv.intent.join_room(room_id)
@@ -338,10 +345,11 @@ class SpringAppService(object):
             log.debug(e)
 
     async def said(self, user, room, message):
-        matrix_id = f"@spring_{user.lower()}:{config['homeserver']['domain']}"
 
-        if matrix_id == "@spring_glenda:jaurarts.org":
-            return
+        domain = config['homeserver']['domain']
+        namespace = config['appservice']['namespace']
+
+        matrix_id = f"@{namespace}_{user.lower()}:{domain}"
 
         room_id = self.rooms[room]["room_id"]
 
@@ -350,10 +358,11 @@ class SpringAppService(object):
         await user.send_text(room_id, message)
 
     async def saidex(self, user, room, message):
-        matrix_id = f"@spring_{user.lower()}:{config['homeserver']['domain']}"
 
-        if matrix_id == "@spring_glenda:jaurarts.org":
-            return
+        domain = config['homeserver']['domain']
+        namespace = config['appservice']['namespace']
+
+        matrix_id = f"@{namespace}_{user.lower()}:{domain}"
 
         room_id = self.rooms[room]["room_id"]
 
@@ -363,7 +372,10 @@ class SpringAppService(object):
 
     async def matrix_user_joined(self, user_id, room_id, event_id=None):
 
-        if user_id.startswith("@spring_") or user_id == "@spring:jauriarts.org":
+        domain = config['homeserver']['domain']
+        namespace = config['appservice']['namespace']
+
+        if user_id.startswith(f"@{namespace}_") or user_id == f"@appservice:{domain}":
             return
 
         channel = None
@@ -385,7 +397,10 @@ class SpringAppService(object):
     async def matrix_user_left(self, user_id, room_id, event_id):
         log.debug("MATRIX USER LEAVES")
 
-        if user_id.startswith("@spring_") or user_id == "@spring:jauriarts.org":
+        domain = config['homeserver']['domain']
+        namespace = config['appservice']['namespace']
+
+        if user_id.startswith(f"@{namespace}_") or user_id == f"@appservice:{domain}":
             return
 
         channel = None
@@ -408,7 +423,9 @@ class SpringAppService(object):
 
     async def say_from(self, user_id, room_id, event_id, body, emote=False):
 
-        if user_id.startswith("@spring_"):
+        namespace = config['appservice']['namespace']
+
+        if user_id.startswith(f"@{namespace}"):
             return
 
         log.debug(self.rooms)
@@ -520,18 +537,21 @@ def main():
 
             log.debug("HANDLE EVENT")
 
+            domain = config['homeserver']['domain']
+            namespace = config['appservice']['namespace']
+
             event_type = event.get("type", "m.unknown")  # type: str
             room_id = event.get("room_id", None)  # type: Optional[MatrixRoomID]
             event_id = event.get("event_id", None)  # type: Optional[MatrixEventID]
             sender = event.get("sender", None)  # type: Optional[MatrixUserID]
             content = event.get("content", {})  # type: Dict
 
-            log.debug("EVENT {}".format(event))
+            log.debug(f"EVENT {event}")
 
-            log.debug("EVENT TYPE: {}".format(event_type))
-            log.debug("EVENT ROOM_ID: {}".format(room_id))
-            log.debug("EVENT SENDER: {}".format(sender))
-            log.debug("EVENT CONTENT: {}".format(content))
+            log.debug(f"EVENT TYPE: {event_type}")
+            log.debug(f"EVENT ROOM_ID: {room_id}")
+            log.debug(f"EVENT SENDER: {sender}")
+            log.debug(f"EVENT CONTENT: {content}")
 
             if room_id == admin_room:
                 if sender in admin_list:
@@ -540,7 +560,7 @@ def main():
                         if body.startswith("!"):
                             await handle_command(body)
             else:
-                if not sender.startswith("@spring_"):
+                if not sender.startswith(f"@{namespace}_"):
                     if event_type == "m.room.message":
 
                         msg_type = content.get("msgtype")
@@ -557,7 +577,7 @@ def main():
                             o = urlparse(mxc_url)
                             domain = o.netloc
                             pic_code = o.path
-                            url = "https://{0}/_matrix/media/v1/download/{0}{1}".format(domain, pic_code)
+                            url = f"https://{domain}/_matrix/media/v1/download/{domain}{pic_code}"
                             await spring_appservice.say_from(sender, room_id, event_id, url)
 
                     elif event_type == "m.room.member":
@@ -585,13 +605,13 @@ def main():
 
         @spring_appservice.bot.on("joined")
         async def on_lobby_joined(message, user, channel):
-            log.debug("LOBBY JOINED user :{} room :{}".format(user.username, channel))
+            log.debug(f"LOBBY JOINED user: {user.username} room: {channel}")
             if user.username != "appservice":
                 await spring_appservice.join_matrix_room(channel, [user.username])
 
         @spring_appservice.bot.on("left")
         async def on_lobby_left(message, user, channel):
-            log.debug("LOBBY LEFT user :{} room :{}".format(user.username, channel))
+            log.debug(f"LOBBY LEFT user: {user.username} room: {channel}")
 
             if channel.startswith("__battle__"):
                 return
