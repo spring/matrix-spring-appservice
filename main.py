@@ -8,6 +8,8 @@ import signal
 import sys
 import copy
 
+from asyncblink import signal as asignal
+
 from collections import defaultdict
 
 import yaml
@@ -21,6 +23,7 @@ from mautrix_appservice import AppService
 from m_types import MatrixEvent, MatrixEventID, MatrixRoomID, MatrixUserID
 
 from asyncspring import spring
+from spring import LobbyProtocol, LobbyProtocolWrapper, connections
 
 with open("config.yaml", 'r') as yml_file:
     config = yaml.safe_load(yml_file)
@@ -91,6 +94,8 @@ class SpringAppService(object):
         self.user_info = dict()
         self.appservice = None
         self.presence_timmer = None
+        self.bot_username = None
+        self.bot_password = None
 
     async def run(self):
 
@@ -105,10 +110,10 @@ class SpringAppService(object):
         use_ssl = config["spring"]["ssl"]
         name = config["spring"]["client_name"]
 
-        self.bot = await spring.connect(server=server,
-                                        port=port,
-                                        use_ssl=use_ssl,
-                                        name=name)
+        self.bot = await self.connect(server=server,
+                                      port=port,
+                                      use_ssl=use_ssl,
+                                      name=name)
 
         self.rooms = config['appservice']['bridge']
 
@@ -132,11 +137,11 @@ class SpringAppService(object):
         #         await self.appservice.add_room_alias(room_id[0], local_part)
         #         await self.appservice.join_room(room_id[0])
 
-        bot_username = config["spring"]["bot_username"]
-        bot_password = config["spring"]["bot_password"]
+        self.bot_username = config["spring"]["bot_username"]
+        self.bot_password = config["spring"]["bot_password"]
 
-        self.bot.login(bot_username,
-                       bot_password)
+        self.bot.login(self.bot_username,
+                       self.bot_password)
 
     def _presence_timer(self, user):
         log.debug(f"SET presence timmer for user : {user}")
@@ -457,6 +462,52 @@ class SpringAppService(object):
         await self.clean_matrix_rooms()
         loop.stop()
         sys.exit(0)
+
+    def login(self, args=None):
+        for channel in self.rooms:
+            self.bot.channels_to_join.append(channel)
+        self.bot.login(self.bot_username, self.bot_password)
+
+    async def connect(self, server, port=8200, use_ssl=False, name=None):
+        """
+        Connect to an SpringRTS Lobby server. Returns a proxy to an LobbyProtocol object.
+        """
+        protocol = None
+        while protocol is None:
+            try:
+                transport, protocol = await loop.create_connection(LobbyProtocol, host=server, port=port, ssl=use_ssl)
+            except ConnectionRefusedError as conn_error:
+                log.info("HOST DOWN! retry in 10 secs {}".format(conn_error))
+                await asyncio.sleep(10)
+
+        log.info("connected")
+        protocol.wrapper = LobbyProtocolWrapper(protocol)
+        protocol.server_info = {"host": server, "port": port, "ssl": use_ssl}
+        protocol.netid = "{}:{}:{}{}".format(id(protocol), server, port, "+" if use_ssl else "-")
+
+        asignal("netid-available").send(protocol)
+
+        connections[protocol.netid] = protocol.wrapper
+
+        return protocol.wrapper
+
+    async def reconnect(self, client_wrapper):
+        protocol = None
+        server_info = client_wrapper.server_info
+
+        log.info("reconnecting")
+        while protocol is None:
+            await asyncio.sleep(10)
+            try:
+                transport, protocol = await loop.create_connection(LobbyProtocol, **server_info)
+                client_wrapper.protocol = protocol
+
+                asignal("netid-available").send(protocol)
+
+                asignal("reconnected").send()
+
+            except ConnectionRefusedError as conn_error:
+                log.info("HOST DOWN! retry in 10 secs {}".format(conn_error))
 
 
 def main():
