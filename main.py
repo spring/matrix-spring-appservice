@@ -22,8 +22,7 @@ from matrix_client.api import MatrixHttpApi
 from mautrix_appservice import AppService
 from m_types import MatrixEvent, MatrixEventID, MatrixRoomID, MatrixUserID
 
-from asyncspring import spring
-from spring import LobbyProtocol, LobbyProtocolWrapper, connections
+from asyncspring.spring import LobbyProtocol, LobbyProtocolWrapper, connections
 
 with open("config.yaml", 'r') as yml_file:
     config = yaml.safe_load(yml_file)
