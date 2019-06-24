@@ -12,7 +12,7 @@ from asyncblink import signal as asignal
 
 from collections import defaultdict
 
-import yaml
+import ruamel.yaml as yaml
 
 from typing import Dict, List, Match, Optional, Set, Tuple, TYPE_CHECKING
 from urllib.parse import quote, urlparse
