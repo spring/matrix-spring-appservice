@@ -650,7 +650,8 @@ def main():
 
         @spring_appservice.bot.on("clients")
         async def on_lobby_clients(message):
-            if message.client.name == client_name:
+            log.debug(f"on_lobby_clients {message}")
+            if message.client.name != client_name:
                 channel = message.params[0]
                 clients = message.params[1:]
                 await spring_appservice.join_matrix_room(channel, clients)
@@ -675,12 +676,13 @@ def main():
 
         @spring_appservice.bot.on("said")
         async def on_lobby_said(message, user, target, text):
-            if message.client.name == client_name:
+            log.debug(f"MESSAGE: {message.client.name}")
+            if message.client.name != client_name:
                 await spring_appservice.said(user, target, text)
 
         @spring_appservice.bot.on("saidex")
         async def on_lobby_saidex(message, user, target, text):
-            if message.client.name == client_name:
+            if message.client.name != client_name:
                 await spring_appservice.saidex(user, target, text)
 
         @spring_appservice.bot.on("denied")
@@ -692,7 +694,7 @@ def main():
 
         @spring_appservice.bot.on("adduser")
         async def on_lobby_adduser(message):
-            if message.client.name == client_name:
+            if message.client.name != client_name:
                 username = message.params[0]
 
                 if username == "ChanServ":
@@ -704,7 +706,7 @@ def main():
 
         @spring_appservice.bot.on("removeuser")
         async def on_lobby_removeuser(message):
-            if message.client.name == client_name:
+            if message.client.name != client_name:
                 username = message.params[0]
 
                 if username == "ChanServ":
@@ -716,7 +718,7 @@ def main():
 
         @spring_appservice.bot.on("accepted")
         async def on_lobby_accepted(message):
-            if message.client.name == client_name:
+            if message.client.name != client_name:
                 await spring_appservice.bridge_logged_users()
 
         log.info("Startup actions complete, now running forever")
