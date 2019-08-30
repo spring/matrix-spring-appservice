@@ -1,6 +1,7 @@
-git+https://github.com/matrix-org/matrix-python-sdk.git
-git+https://github.com/tulir/mautrix-appservice-python.git@legacy
+git+https://github.com/tulir/mautrix-python.git@legacy
 sqlalchemy
 asyncblink
 future-fstrings
 ruamel.yaml
+aiohttp
+git+https://github.com/TurBoss/asyncspring.git
