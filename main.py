@@ -460,7 +460,7 @@ class SpringAppService(object):
 
     async def exit(self, signal_name):
         log.debug("Singal received exiting")
-        await self.clean_matrix_rooms()
+        # await self.clean_matrix_rooms()
         loop.stop()
         sys.exit(0)
 
