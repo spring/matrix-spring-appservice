@@ -289,12 +289,12 @@ class SpringAppService(object):
             log.debug(f"display_name = {display_name}")
             log.debug(f"domain = {domain}")
 
-            log.debug(f"Bridging user {user_name}, domain {domain}. displayname {display_name}")
+            log.info(f"Bridging user {user_name}, domain {domain}. displayname {display_name}")
             self.bot.bridged_client_from(domain, user_name, display_name)
 
             for room in rooms:
                 channel = room["channel"]
-                log.debug(f"Join channel {channel}, user {user_name},  domain {domain}")
+                log.info(f"Join channel {channel}, user {user_name},  domain {domain}")
                 self.bot.join_from(channel, domain, user_name)
 
             log.debug("##############################")
@@ -378,10 +378,10 @@ class SpringAppService(object):
 
     async def matrix_user_joined(self, user_id, room_id, event_id=None):
 
-        domain = config['homeserver']['domain']
+        hs_domain = config['homeserver']['domain']
         namespace = config['appservice']['namespace']
 
-        if user_id.startswith(f"@{namespace}_") or user_id == f"@appservice:{domain}":
+        if user_id.startswith(f"@{namespace}_") or user_id == f"@appservice:{hs_domain}":
             return
 
         channel = None
@@ -389,16 +389,33 @@ class SpringAppService(object):
             if self.rooms[key]["room_id"] == room_id:
                 channel = key
 
-        display_name = self.user_info[user_id].get("display_name")
-        domain = self.user_info[user_id].get("domain")
-        user_name = self.user_info[user_id].get("user_name")
+        user_name = None
+        user_domain = None
+
+        if user_id not in self.user_info.keys():
+            if user_id.startswith("@_discord_"):
+                user_domain = "discord"
+                user_id = user_id.lstrip("@_discord_")
+                user_name = user_id.rstrip(":springrts.com")
+
+            elif user_id.startswith("@freenode_"):
+                user_domain = "freenode.org"
+                user_id = user_id.lstrip("@freenode_")
+                user_name = user_id.rstrip(":matrix.org")
+
+        else:
+
+            # display_name = self.user_info[user_id].get("display_name")
+            user_domain = self.user_info[user_id].get("domain")
+            user_name = self.user_info[user_id].get("user_name")
 
         if event_id:
             await self.appservice.mark_read(room_id=room_id, event_id=event_id)
 
         log.debug(channel)
-
-        self.bot.join_from(channel, domain, user_name)
+        
+        if user_name and user_domain:
+            self.bot.join_from(channel, user_domain, user_name)
 
     async def matrix_user_left(self, user_id, room_id, event_id):
         log.debug("MATRIX USER LEAVES")
