@@ -12,7 +12,10 @@ from asyncblink import signal as asignal
 
 from collections import defaultdict
 
-import ruamel.yaml as yaml
+from ruamel.yaml import YAML
+yaml = YAML()
+yaml.preserve_quotes = True
+yaml.boolean_representation = ['False', 'True']
 
 from typing import Dict, List, Match, Optional, Set, Tuple, TYPE_CHECKING
 from urllib.parse import quote, urlparse
