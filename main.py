@@ -13,9 +13,6 @@ from asyncblink import signal as asignal
 from collections import defaultdict
 
 from ruamel.yaml import YAML
-yaml = YAML()
-yaml.preserve_quotes = True
-yaml.boolean_representation = ['False', 'True']
 
 from typing import Dict, List, Match, Optional, Set, Tuple, TYPE_CHECKING
 from urllib.parse import quote, urlparse
@@ -26,6 +23,10 @@ from mautrix_appservice import AppService
 from m_types import MatrixEvent, MatrixEventID, MatrixRoomID, MatrixUserID
 
 from asyncspring.lobby import LobbyProtocol, LobbyProtocolWrapper, connections
+
+yaml = YAML()
+yaml.preserve_quotes = True
+yaml.boolean_representation = ['false', 'true']
 
 with open("config.yaml", 'r') as yml_file:
     config = yaml.load(yml_file)
@@ -128,7 +129,7 @@ class SpringAppService(object):
             room_id = room_data["room_id"],
             room_enabled = room_data["enabled"]
 
-            log.debug(f"{room_enabled} channel : {channel} room_name : {room_name} room_id : {room_id}")
+            log.info(f"{room_enabled} channel : {channel} room_name : {room_name} room_id : {room_id}")
             if room_enabled:
                 self.bot.channels_to_join.append(channel)
 
@@ -465,10 +466,10 @@ class SpringAppService(object):
                 if stored_room_id == room_id:
                     channel = room_name
             else:
-                log.info("room id {} not enabled {}".format(room_id, enabled))
+                log.info(f"room id {room_id} not enabled {enabled}")
 
         if channel is None:
-            log.info("room id {} found in room_list".format(room_id))
+            log.info(f"room id {room_id} found in room_list")
         else:
             log.info(user_id)
             user_name = user_id.split(":")[0][1:]
