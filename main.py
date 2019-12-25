@@ -464,12 +464,12 @@ class SpringAppService(object):
             stored_room_id = room_data["room_id"]
             enabled = room_data["enabled"]
 
-            if enabled is str('True'):
+            if enabled == str('True'):
                 log.info(stored_room_id, room_id)
                 if stored_room_id == room_id:
                     channel = room_name
             else:
-                log.info(f"room id {room_id} {enabled}")
+                log.info(f"room id: {room_id} active: {enabled}")
 
         if channel is None:
             log.info(f"room id {room_id} found in room_list")
