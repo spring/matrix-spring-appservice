@@ -28,7 +28,7 @@ from m_types import MatrixEvent, MatrixEventID, MatrixRoomID, MatrixUserID
 from asyncspring.lobby import LobbyProtocol, LobbyProtocolWrapper, connections
 
 with open("config.yaml", 'r') as yml_file:
-    config = yaml.safe_load(yml_file)
+    config = yaml.load(yml_file)
 
 logging.config.dictConfig(copy.deepcopy(config["logging"]))
 
