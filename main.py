@@ -12,7 +12,7 @@ from asyncblink import signal as asignal
 
 from collections import defaultdict
 
-from ruamel.yaml import YAML
+import ruamel.yaml as yaml
 
 from typing import Dict, List, Match, Optional, Set, Tuple, TYPE_CHECKING
 from urllib.parse import quote, urlparse
@@ -24,12 +24,9 @@ from m_types import MatrixEvent, MatrixEventID, MatrixRoomID, MatrixUserID
 
 from asyncspring.lobby import LobbyProtocol, LobbyProtocolWrapper, connections
 
-yaml = YAML()
-yaml.preserve_quotes = True
-yaml.boolean_representation = ['false', 'true']
 
 with open("config.yaml", 'r') as yml_file:
-    config = yaml.load(yml_file)
+    config = yaml.safe_load(yml_file)
 
 logging.config.dictConfig(copy.deepcopy(config["logging"]))
 
@@ -461,7 +458,7 @@ class SpringAppService(object):
             stored_room_id = room_data["room_id"]
             enabled = room_data["enabled"]
 
-            if enabled is True:
+            if enabled is 'True':
                 log.info(stored_room_id, room_id)
                 if stored_room_id == room_id:
                     channel = room_name
