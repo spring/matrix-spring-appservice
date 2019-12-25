@@ -419,7 +419,10 @@ class SpringAppService(object):
             self.bot.join_from(channel, user_domain, user_name)
 
     async def matrix_user_left(self, user_id, room_id, event_id):
-        log.debug("MATRIX USER LEAVES")
+        log.info("MATRIX USER LEAVES")
+
+        if user_id not in self.user_info.keys():
+            return
 
         domain = config['homeserver']['domain']
         namespace = config['appservice']['namespace']
@@ -431,6 +434,7 @@ class SpringAppService(object):
         for key in self.rooms:
             if self.rooms[key]["room_id"] == room_id:
                 channel = key
+
 
         display_name = self.user_info[user_id].get("display_name")
         domain = self.user_info[user_id].get("domain")
