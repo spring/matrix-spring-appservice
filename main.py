@@ -458,6 +458,7 @@ class SpringAppService(object):
             enabled = room_data["enabled"]
 
             if enabled:
+                log.info(stored_room_id, room_id)
                 if stored_room_id == room_id:
                     channel = room_name
             else:
