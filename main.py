@@ -396,13 +396,13 @@ class SpringAppService(object):
         if user_id not in self.user_info.keys():
             if user_id.startswith("@_discord_"):
                 user_domain = "discord"
-                user_id = user_id.lstrip("@_discord_")
-                user_name = user_id.rstrip(":springrts.com")
+                user_name = user_id.lstrip("@_discord_")
+                user_name = user_name.rstrip(":springrts.com")
 
             elif user_id.startswith("@freenode_"):
                 user_domain = "freenode.org"
-                user_id = user_id.lstrip("@freenode_")
-                user_name = user_id.rstrip(":matrix.org")
+                user_name = user_id.lstrip("@freenode_")
+                user_name = user_name.rstrip(":matrix.org")
 
         else:
 
@@ -416,6 +416,8 @@ class SpringAppService(object):
         log.debug(channel)
         
         if user_name and user_domain:
+            display_name = self.user_info[user_id].get("display_name")
+            self.bot.bridged_client_from(user_domain, user_name, display_name)
             self.bot.join_from(channel, user_domain, user_name)
 
     async def matrix_user_left(self, user_id, room_id, event_id):
@@ -467,7 +469,7 @@ class SpringAppService(object):
                 if stored_room_id == room_id:
                     channel = room_name
             else:
-                log.info(f"room id {room_id} not enabled {type(enabled)}")
+                log.info(f"room id {room_id} not enabled {enabled}")
 
         if channel is None:
             log.info(f"room id {room_id} found in room_list")
