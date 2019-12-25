@@ -294,7 +294,7 @@ class SpringAppService(object):
 
             for room in rooms:
                 channel = room["channel"]
-                log.info(f"Join channel {channel}, user {user_name},  domain {domain}")
+                log.info(f"Join channel {channel}, user {user_name}, domain {domain}")
                 self.bot.join_from(channel, domain, user_name)
 
             log.debug("##############################")
@@ -460,16 +460,23 @@ class SpringAppService(object):
             if enabled:
                 if stored_room_id == room_id:
                     channel = room_name
+            else:
+                log.info("room id {} not enabled".format(room_id))
 
         if channel is None:
-            log.info("no chanel found in room_list")
+            log.info("room id {} found in room_list".format(room_id))
         else:
+            log.info(user_id)
             user_name = user_id.split(":")[0][1:]
             domain = user_id.split(":")[1]
 
             if user_name.startswith("_discord"):
                 domain = "discord"
                 user_name = user_name.lstrip("_discord_")
+
+            elif user_name.startswith("freenode_"):
+                domain = "frenode.org"
+                user_name = user_name.lstrip("freenode_")
 
             await self.appservice.mark_read(room_id=room_id, event_id=event_id)
 
