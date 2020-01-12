@@ -24,7 +24,6 @@ from m_types import MatrixEvent, MatrixEventID, MatrixRoomID, MatrixUserID
 
 from asyncspring.lobby import LobbyProtocol, LobbyProtocolWrapper, connections
 
-
 with open("config.yaml", 'r') as yml_file:
     config = yaml.safe_load(yml_file)
 
@@ -111,11 +110,13 @@ class SpringAppService(object):
         port = config["spring"]["port"]
         use_ssl = config["spring"]["ssl"]
         name = config["spring"]["client_name"]
+        flags = config["spring"]["client_flags"]
 
         self.bot = await self.connect(server=server,
                                       port=port,
                                       use_ssl=use_ssl,
-                                      name=name)
+                                      name=name,
+                                      flags=flags)
 
         self.rooms = config['appservice']['bridge']
 
@@ -414,7 +415,7 @@ class SpringAppService(object):
             await self.appservice.mark_read(room_id=room_id, event_id=event_id)
 
         log.debug(channel)
-        
+
         if user_name and user_domain:
             display_name = self.user_info[user_id].get("display_name")
             self.bot.bridged_client_from(user_domain, user_name, display_name)
@@ -436,7 +437,6 @@ class SpringAppService(object):
         for key in self.rooms:
             if self.rooms[key]["room_id"] == room_id:
                 channel = key
-
 
         display_name = self.user_info[user_id].get("display_name")
         domain = self.user_info[user_id].get("domain")
@@ -501,7 +501,7 @@ class SpringAppService(object):
             self.bot.channels_to_join.append(channel)
         self.bot.login(self.bot_username, self.bot_password)
 
-    async def connect(self, server, port=8200, use_ssl=False, name=None):
+    async def connect(self, server, port=8200, use_ssl=False, name=None, flags=None):
         """
         Connect to an SpringRTS Lobby server. Returns a proxy to an LobbyProtocol object.
         """
@@ -517,6 +517,12 @@ class SpringAppService(object):
         protocol.wrapper = LobbyProtocolWrapper(protocol)
         protocol.server_info = {"host": server, "port": port, "ssl": use_ssl}
         protocol.netid = "{}:{}:{}{}".format(id(protocol), server, port, "+" if use_ssl else "-")
+
+        if name is not None:
+            protocol.name = name
+
+        if flags is not None:
+            protocol.flags = flags
 
         asignal("netid-available").send(protocol)
 
@@ -544,7 +550,6 @@ class SpringAppService(object):
 
 
 def main():
-
     hostname = config["appservice"]["hostname"]
     port = config["appservice"]["port"]
 
