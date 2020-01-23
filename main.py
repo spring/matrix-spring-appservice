@@ -755,8 +755,8 @@ def main():
 
         @spring_appservice.bot.on("accepted")
         async def on_lobby_accepted(message):
-            if message.client.name != client_name:
-                await spring_appservice.bridge_logged_users()
+            print(f"message Accepted {message}")
+            await spring_appservice.bridge_logged_users()
 
         log.info("Startup actions complete, now running forever")
         loop.run_forever()
