@@ -713,13 +713,12 @@ def main():
 
         @spring_appservice.bot.on("said")
         async def on_lobby_said(message, user, target, text):
-            log.debug(f"MESSAGE: {message.client.name}")
-            if message.client.name != client_name:
+            if message.client.name == client_name:
                 await spring_appservice.said(user, target, text)
 
         @spring_appservice.bot.on("saidex")
         async def on_lobby_saidex(message, user, target, text):
-            if message.client.name != client_name:
+            if message.client.name == client_name:
                 await spring_appservice.saidex(user, target, text)
 
         @spring_appservice.bot.on("denied")
