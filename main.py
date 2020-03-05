@@ -291,12 +291,12 @@ class SpringAppService(object):
             log.debug(f"display_name = {display_name}")
             log.debug(f"domain = {domain}")
 
-            log.info(f"Bridging user {user_name}, domain {domain}. displayname {display_name}")
+            log.debug(f"Bridging user {user_name}, domain {domain}. displayname {display_name}")
             self.bot.bridged_client_from(domain, user_name, display_name)
 
             for room in rooms:
                 channel = room["channel"]
-                log.info(f"Join channel {channel}, user {user_name}, domain {domain}")
+                log.debug(f"Join channel {channel}, user {user_name}, domain {domain}")
                 self.bot.join_from(channel, domain, user_name)
 
             log.debug("##############################")
@@ -422,7 +422,7 @@ class SpringAppService(object):
             self.bot.join_from(channel, user_domain, user_name)
 
     async def matrix_user_left(self, user_id, room_id, event_id):
-        log.info("MATRIX USER LEAVES")
+        log.debug("MATRIX USER LEAVES")
 
         if user_id not in self.user_info.keys():
             return
@@ -465,16 +465,16 @@ class SpringAppService(object):
             enabled = room_data["enabled"]
 
             if enabled == str('True'):
-                log.info(stored_room_id, room_id)
+                log.debug(f"{stored_room_id} {room_id}")
                 if stored_room_id == room_id:
                     channel = room_name
             else:
-                log.info(f"room id: {room_id} active: {enabled}")
+                log.debug(f"room id: {room_id} active: {enabled}")
 
         if channel is None:
-            log.info(f"room id {room_id} found in room_list")
+            log.debug(f"room id {room_id} found in room_list")
         else:
-            log.info(user_id)
+            log.debug(user_id)
             user_name = user_id.split(":")[0][1:]
             domain = user_id.split(":")[1]
 
