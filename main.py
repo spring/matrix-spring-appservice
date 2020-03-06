@@ -405,6 +405,10 @@ class SpringAppService(object):
                 user_name = user_id.lstrip("@freenode_")
                 user_name = user_name.rstrip(":matrix.org")
 
+            self.user_info[user_id] = dict(domain=user_domain,
+                                           user_name=user_name,
+                                           display_name=user_name)
+
         else:
 
             # display_name = self.user_info[user_id].get("display_name")
