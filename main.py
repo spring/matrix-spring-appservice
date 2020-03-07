@@ -3,6 +3,7 @@
 # -*- coding: utf-8 -*-
 
 import asyncio
+import nest_asyncio
 import logging.config
 import signal
 import sys
@@ -32,8 +33,9 @@ logging.config.dictConfig(copy.deepcopy(config["logging"]))
 log = logging.getLogger("matrix-spring.init")  # type: logging.Logger
 log.debug("Initializing matrix-spring")
 
+
+nest_asyncio.apply()
 loop = asyncio.get_event_loop()  # type: asyncio.AbstractEventLoop
-loop.set_debug(True)
 
 state_store = "state_store.json"
 
@@ -43,7 +45,7 @@ matrix_api = MatrixHttpApi(config["homeserver"]["address"])
 
 appserv = AppService(config["homeserver"]["address"], config["homeserver"]["domain"],
                      config["appservice"]["as_token"], config["appservice"]["hs_token"],
-                     config["appservice"]["bot_username"], log="spring_as", loop=loop,
+                     config["appservice"]["bot_username"], log="spring_as",
                      verify_ssl=config["homeserver"]["verify_ssl"], state_store=state_store,
                      real_user_content_key="org.jauriarts.matrix.puppet",
                      aiohttp_params={"client_max_size": config["appservice"]["max_body_size"] * mebibyte})
@@ -146,13 +148,13 @@ class SpringAppService(object):
         self.bot.login(self.bot_username,
                        self.bot_password)
 
-    def _presence_timer(self, user):
-        log.debug(f"SET presence timmer for user : {user}")
-
-        task = [user.set_presence("online"),
-                user.set_display_name(user)]
-
-        loop.run_until_complete(asyncio.gather(*task, loop=loop))
+    # def _presence_timer(self, user):
+    #     log.debug(f"SET presence timmer for user : {user}")
+    #
+    #     task = [user.set_presence("online"),
+    #             user.set_display_name(user)]
+    #
+    #     loop.run_until_complete(asyncio.gather(*task, loop=loop))
 
     async def leave_matrix_rooms(self, username):
         user = appserv.intent.user(username)
@@ -165,10 +167,9 @@ class SpringAppService(object):
         matrix_id = f"@{namespace}_{user_name.lower()}:{domain}"
         user = appserv.intent.user(matrix_id)
 
-        task = [user.set_presence("online"),
-                user.set_display_name(user_name)]
+        task = [user.set_presence("online"), user.set_display_name(user_name)]
 
-        loop.run_until_complete(asyncio.gather(*task, loop=loop))
+        await asyncio.gather(*task)
 
         # self.presence_timmer = asyncio.get_event_loop().call_later(58, self._presence_timer, user)
 
@@ -497,7 +498,7 @@ class SpringAppService(object):
     async def exit(self, signal_name):
         log.debug("Singal received exiting")
         # await self.clean_matrix_rooms()
-        loop.stop()
+        # loop.stop()
         sys.exit(0)
 
     def login(self, args=None):
@@ -553,7 +554,7 @@ class SpringAppService(object):
                 log.info("HOST DOWN! retry in 10 secs {}".format(conn_error))
 
 
-def main():
+async def main():
     hostname = config["appservice"]["hostname"]
     port = config["appservice"]["port"]
 
@@ -573,14 +574,14 @@ def main():
         spring_appservice = SpringAppService()
 
         tasks = (spring_appservice.run(), start)
-        loop.run_until_complete(asyncio.gather(*tasks, loop=loop))
+        await asyncio.gather(*tasks)
 
-        appservice_account = loop.run_until_complete(appserv.intent.whoami())
+        appservice_account = await appserv.intent.whoami()
         user = appserv.intent.user(appservice_account)
 
-        loop.run_until_complete(user.join_room(room_id=config['appservice']["admin_room"]))
+        await user.join_room(room_id=config['appservice']["admin_room"])
 
-        loop.run_until_complete(user.set_presence("online"))
+        await user.set_presence("online")
 
         # location = config["homeserver"]["domain"].split(".")[0]
         # external_id = "MatrixAppService"
@@ -683,7 +684,7 @@ def main():
 
         ################
         #
-        # Spring events
+        # Lobby events
         #
         ################
 
@@ -758,12 +759,16 @@ def main():
 
         @spring_appservice.bot.on("accepted")
         async def on_lobby_accepted(message):
-            print(f"message Accepted {message}")
+            log.debug(f"message Accepted {message}")
             await spring_appservice.bridge_logged_users()
+
+        @spring_appservice.bot.on("failed")
+        async def on_lobby_failed(message):
+            log.debug(f"message FAILED {message}")
 
         log.info("Startup actions complete, now running forever")
         loop.run_forever()
 
 
 if __name__ == "__main__":
-    main()
+    asyncio.run(main())

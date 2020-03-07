@@ -5,4 +5,5 @@ asyncblink
 future-fstrings
 ruamel.yaml
 aiohttp
+nest_asyncio
 git+https://github.com/TurBoss/asyncspring.git
