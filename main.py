@@ -267,6 +267,9 @@ class SpringAppService(object):
             domain = self.user_info[user_id].get("domain")
             user_name = self.user_info[user_id].get("user_name")
 
+            if user_name == config['spring']['bot_username'] or user_name == '_discord_bot' or user_name == 'spring':
+                continue
+
             log.debug(f"user_name = {user_name}")
             log.debug(f"display_name = {display_name}")
             log.debug(f"domain = {domain}")
