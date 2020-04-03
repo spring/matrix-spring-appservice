@@ -8,16 +8,17 @@ import signal
 import sys
 import copy
 
-
+from typing import Optional, Type
 import ruamel.yaml as yaml
 
 from typing import Dict, List, Match, Optional, Set, Tuple, TYPE_CHECKING
 from urllib.parse import quote, urlparse
 
+
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent,
                            PresenceEvent, TypingEvent, ReceiptEvent, TextMessageEventContent)
-from mautrix.appservice.appservice import AppService
+from mautrix.appservice import AppService, StateStore
 
 from spring_lobby_client import SpringLobbyClient
 
@@ -34,78 +35,7 @@ nest_asyncio.apply()
 loop = asyncio.get_event_loop()  # type: asyncio.AbstractEventLoop
 
 
-
 async def main():
-    mebibyte = 1024 ** 2
-    appserv = AppService(config["homeserver"]["address"], config["homeserver"]["domain"],
-                         config["appservice"]["as_token"], config["appservice"]["hs_token"],
-                         config["appservice"]["bot_username"], loop=loop, log="spring_as",
-                         verify_ssl=config["homeserver"]["verify_ssl"],
-                         real_user_content_key="org.jauriarts.matrix.puppet",
-                         aiohttp_params={"client_max_size": config["appservice"]["max_body_size"] * mebibyte})
-
-    hostname = config["appservice"]["hostname"]
-    port = config["appservice"]["port"]
-
-    await appserv.start(hostname, port)
-
-    ################
-    #
-    # Initialization
-    #
-    ################
-
-    log.info("Initialization complete, running startup actions")
-
-    admin_list = config["appservice"]["admin_list"]
-    admin_room = config["appservice"]["admin_room"]
-
-    spring_lobby_client = SpringLobbyClient(appserv)
-
-    await spring_lobby_client.start()
-
-    appservice_account = await appserv.intent.whoami()
-    user = appserv.intent.user(appservice_account)
-
-    await user.ensure_joined(room_id=config['appservice']["admin_room"])
-
-    # await user.set_presence("online")
-
-    # location = config["homeserver"]["domain"].split(".")[0]
-    # external_id = "MatrixAppService"
-    # external_username = config["appservice"]["bot_username"].split("_")[1]
-
-    for signame in ('SIGINT', 'SIGTERM'):
-        loop.add_signal_handler(getattr(signal, signame),
-                                lambda: asyncio.ensure_future(spring_lobby_client.exit(signame)))
-    ################
-    #
-    # Matrix helper functions
-    #
-    ################
-
-    # async def handle_command(body):
-    #
-    #     log.debug(body)
-    #
-    #     cmd = body[1:].split(" ")[0]
-    #     args = body[1:].split(" ")[1:]
-    #
-    #     if cmd == "set_room_alias":
-    #         if len(args) == 2:
-    #             await user.add_room_alias(room_id=args[0], localpart=args[1])
-    #
-    #     elif cmd == "join_room":
-    #         if len(args) == 1:
-    #             await user.join_room(room_id_or_alias=args[0])
-    #
-    #     elif cmd == "leave_room":
-    #         if len(args) > 0:
-    #             for username in args:
-    #                 await spring_lobby_client.leave_matrix_rooms(username)
-
-        # else:
-        #     await user.send_text()
 
     ################
     #
@@ -113,7 +43,6 @@ async def main():
     #
     ################
 
-    @appserv.matrix_event_handler
     async def handle_event(event: Event) -> None:
         log.debug("HANDLE EVENT")
 
@@ -133,41 +62,84 @@ async def main():
         log.debug(f"EVENT SENDER: {sender}")
         log.debug(f"EVENT CONTENT: {content}")
 
-        if room_id == admin_room:
-            if sender in admin_list:
-                if event_type == "m.room.message":
-                    body = content.get("body")
-                    if body.startswith("!"):
-                        pass
-                        # await handle_command(body)
-        else:
-            if not sender.startswith(f"@{namespace}_"):
-                if event_type == "m.room.message":
+        if not sender.startswith(f"@{namespace}_"):
+            if event_type == "m.room.message":
 
-                    msg_type = content.get("msgtype")
+                msg_type = content.get("msgtype")
 
-                    body = content.get("body")
-                    info = content.get("info")
+                body = content.get("body")
+                info = content.get("info")
 
-                    if msg_type == "m.text":
-                        await spring_lobby_client.say_from(sender, room_id, event_id, body)
-                    elif msg_type == "m.emote":
-                        await spring_lobby_client.say_from(sender, room_id, event_id, body, emote=True)
-                    elif msg_type == "m.image":
-                        mxc_url = event['content']['url']
-                        o = urlparse(mxc_url)
-                        domain = o.netloc
-                        pic_code = o.path
-                        url = f"https://{domain}/_matrix/media/v1/download/{domain}{pic_code}"
-                        await spring_lobby_client.say_from(sender, room_id, event_id, url)
+                if msg_type == "m.text":
+                    await spring_lobby_client.say_from(sender, room_id, event_id, body)
+                elif msg_type == "m.emote":
+                    await spring_lobby_client.say_from(sender, room_id, event_id, body, emote=True)
+                elif msg_type == "m.image":
+                    mxc_url = event['content']['url']
+                    o = urlparse(mxc_url)
+                    domain = o.netloc
+                    pic_code = o.path
+                    url = f"https://{domain}/_matrix/media/v1/download/{domain}{pic_code}"
+                    await spring_lobby_client.say_from(sender, room_id, event_id, url)
 
-                elif event_type == "m.room.member":
-                    membership = content.get("membership")
+            elif event_type == "m.room.member":
+                membership = content.get("membership")
 
-                    if membership == "join":
-                        await spring_lobby_client.matrix_user_joined(sender, room_id, event_id)
-                    elif membership == "leave":
-                        await spring_lobby_client.matrix_user_left(sender, room_id, event_id)
+                if membership == "join":
+                    await spring_lobby_client.matrix_user_joined(sender, room_id, event_id)
+                elif membership == "leave":
+                    await spring_lobby_client.matrix_user_left(sender, room_id, event_id)
+
+    # state_store_class = StateStore
+    # state_store = state_store_class()
+    mebibyte = 1024 ** 2
+    appserv = AppService(server=config["homeserver"]["address"],
+                         domain=config["homeserver"]["domain"],
+                         verify_ssl=config["homeserver"]["verify_ssl"],
+
+                         as_token=config["appservice"]["as_token"],
+                         hs_token=config["appservice"]["hs_token"],
+
+                         bot_localpart=config["appservice"]["bot_username"],
+
+                         log="spring_as",
+                         loop=loop,
+
+                         # state_store=state_store,
+                         real_user_content_key="org.jauriarts.appservice.puppet",
+                         aiohttp_params={"client_max_size": config["appservice"]["max_body_size"] * mebibyte})
+
+
+    hostname = config["appservice"]["hostname"]
+    port = config["appservice"]["port"]
+
+    await appserv.start(hostname, port)
+
+    appserv.matrix_event_handler(handle_event)
+    ################
+    #
+    # Initialization
+    #
+    ################
+
+    log.info("Initialization complete, running startup actions")
+
+    spring_lobby_client = SpringLobbyClient(appserv)
+
+    await spring_lobby_client.start()
+
+    appservice_account = await appserv.intent.whoami()
+    user = appserv.intent.user(appservice_account)
+
+    # await user.set_presence("online")
+
+    # location = config["homeserver"]["domain"].split(".")[0]
+    # external_id = "MatrixAppService"
+    # external_username = config["appservice"]["bot_username"].split("_")[1]
+
+    for signame in ('SIGINT', 'SIGTERM'):
+        loop.add_signal_handler(getattr(signal, signame),
+                                lambda: asyncio.ensure_future(spring_lobby_client.exit(signame)))
 
     ################
     #
