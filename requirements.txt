@@ -1,5 +1,5 @@
-git+https://github.com/matrix-org/matrix-python-sdk.git
-git+https://github.com/tulir/mautrix-python.git@legacy
+mautrix
+matrix_client
 sqlalchemy
 asyncblink
 future-fstrings
