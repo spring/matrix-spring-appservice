@@ -1,0 +1,27 @@
+# An ID which is unique across all application services on your homeserver. This
+# should never be changed once set.
+
+id: "example-as"
+
+# this is the base URL of the application service
+url: "http://192.168.10.16:8080"
+
+# This is the token that the AS should use as its access_token when using the Client-Server API
+# This can be anything you want.
+as_token:
+
+# This is the token that the HS will use when sending requests to the AS.
+# This can be anything you want.
+hs_token:
+
+# this is the local part of the desired user ID for this AS
+sender_localpart: appservice
+
+namespaces:
+  users:
+    - exclusive: true
+      regex: "@example_.*"
+  rooms: []
+  aliases:
+    - exclusive: true
+      regex: "#example_.*"
