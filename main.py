@@ -18,7 +18,7 @@ from urllib.parse import quote, urlparse
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent,
                            PresenceEvent, TypingEvent, ReceiptEvent, TextMessageEventContent)
-from mautrix.appservice import AppService, StateStore
+from mautrix.appservice import AppService
 
 from spring_lobby_client import SpringLobbyClient
 
@@ -90,8 +90,6 @@ async def main():
                 elif membership == "leave":
                     await spring_lobby_client.matrix_user_left(sender, room_id, event_id)
 
-    # state_store_class = StateStore
-    # state_store = state_store_class()
     mebibyte = 1024 ** 2
     appserv = AppService(server=config["homeserver"]["address"],
                          domain=config["homeserver"]["domain"],
@@ -105,17 +103,16 @@ async def main():
                          log="spring_as",
                          loop=loop,
 
-                         # state_store=state_store,
                          real_user_content_key="org.jauriarts.appservice.puppet",
                          aiohttp_params={"client_max_size": config["appservice"]["max_body_size"] * mebibyte})
-
 
     hostname = config["appservice"]["hostname"]
     port = config["appservice"]["port"]
 
+    appserv.matrix_event_handler(handle_event)
+
     await appserv.start(hostname, port)
 
-    appserv.matrix_event_handler(handle_event)
     ################
     #
     # Initialization
