@@ -1,3 +1,4 @@
+commonmark
 mautrix
 matrix_client
 sqlalchemy
