@@ -41,6 +41,7 @@ class Matrix:
 
         self.log.debug(f"message \"{message}\" from {user_id} to {room_id}:")
 
+        # print(type(message.msgtype))
         if str(message.msgtype) == "m.text":
             await self.sl.say_from_matrix(user_id, room_id, event_id, message.body)
         elif str(message.msgtype) == "m.emote":
@@ -179,46 +180,6 @@ async def main():
     await appserv.start(hostname, port)
     await spring_lobby_client.start()
 
-    matrix = Matrix(appserv, spring_lobby_client, config)
-
-    appserv.matrix_event_handler(matrix.handle_event)
-
-    await matrix.wait_for_connection()
-    await matrix.init_as_bot()
-
-    appservice_account = await appserv.intent.whoami()
-    user = appserv.intent.user(appservice_account)
-
-    await appserv.intent.set_presence(PresenceState.ONLINE)
-
-    # location = config["homeserver"]["domain"].split(".")[0]
-    # external_id = "MatrixAppService"
-    # external_username = config["appservice"]["bot_username"].split("_")[1]
-
-    rooms = config["bridge"]["rooms"]
-
-    for room in rooms:
-
-        enabled = config["bridge.rooms"][room]["enabled"]
-        room_id = config["bridge.rooms"][room]["room_id"]
-        room_alias = f"{config['appservice.namespace']}_{room}"
-
-        if enabled is True:
-            await user.ensure_joined(room_id=room_id)
-            await appserv.intent.add_room_alias(room_id=RoomID(room_id), alias_localpart=room_alias, override=True)
-        else:
-            # await appserv.intent.remove_room_alias(alias_localpart=room_alias)
-            try:
-                await user.leave_room(room_id=room_id)
-            except Exception as e:
-                log.debug(f"Failed to leave rom, not previously joined: {e}")
-
-    appserv.ready = True
-    log.info("Initialization complete, running startup actions")
-
-    for signame in ('SIGINT', 'SIGTERM'):
-        loop.add_signal_handler(getattr(signal, signame),
-                                lambda: asyncio.ensure_future(spring_lobby_client.exit(signame)))
 
     ################
     #
@@ -300,11 +261,52 @@ async def main():
     @spring_lobby_client.bot.on("accepted")
     async def on_lobby_accepted(message):
         log.debug(f"message Accepted {message}")
-        await spring_lobby_client.bridge_logged_users()
+        await spring_lobby_client.sync_matrix_users()
 
     @spring_lobby_client.bot.on("failed")
     async def on_lobby_failed(message):
         log.debug(f"message FAILED {message}")
+
+    matrix = Matrix(appserv, spring_lobby_client, config)
+
+    appserv.matrix_event_handler(matrix.handle_event)
+
+    await matrix.wait_for_connection()
+    await matrix.init_as_bot()
+
+    appservice_account = await appserv.intent.whoami()
+    user = appserv.intent.user(appservice_account)
+
+    await appserv.intent.set_presence(PresenceState.ONLINE)
+
+    # location = config["homeserver"]["domain"].split(".")[0]
+    # external_id = "MatrixAppService"
+    # external_username = config["appservice"]["bot_username"].split("_")[1]
+
+    rooms = config["bridge"]["rooms"]
+
+    for room in rooms:
+
+        enabled = config["bridge.rooms"][room]["enabled"]
+        room_id = config["bridge.rooms"][room]["room_id"]
+        room_alias = f"{config['appservice.namespace']}_{room}"
+
+        if enabled is True:
+            await user.ensure_joined(room_id=room_id)
+            await appserv.intent.add_room_alias(room_id=RoomID(room_id), alias_localpart=room_alias, override=True)
+        else:
+            # await appserv.intent.remove_room_alias(alias_localpart=room_alias)
+            try:
+                await user.leave_room(room_id=room_id)
+            except Exception as e:
+                log.debug(f"Failed to leave rom, not previously joined: {e}")
+
+    appserv.ready = True
+    log.info("Initialization complete, running startup actions")
+
+    for signame in ('SIGINT', 'SIGTERM'):
+        loop.add_signal_handler(getattr(signal, signame),
+                                lambda: asyncio.ensure_future(spring_lobby_client.exit(signame)))
 
 
 if __name__ == "__main__":
