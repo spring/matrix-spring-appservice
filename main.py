@@ -10,6 +10,7 @@ from typing import Optional, Dict
 from urllib.parse import urlparse
 
 from mautrix.bridge import BaseBridgeConfig
+from mautrix.client.api.types import PresenceState
 from mautrix.errors import MForbidden
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent,
@@ -22,7 +23,6 @@ from spring_lobby_client import SpringLobbyClient
 
 
 class Matrix:
-    log: logging.Logger = logging.getLogger("matrix.events")
     az: AppService
     sl: SpringLobbyClient
     config: 'BaseBridgeConfig'
@@ -31,16 +31,46 @@ class Matrix:
     user_id_suffix: str
 
     def __init__(self, az, sl, config):
+        self.log = logging.getLogger("matrix.events")
         self.az = az
         self.sl = sl
         self.config = config
 
+    async def handle_message(self, room_id: RoomID, user_id: UserID, message: MessageEventContent,
+                             event_id: EventID) -> None:
+
+        self.log.debug(f"message \"{message}\" from {user_id} to {room_id}:")
+
+        if str(message.msgtype) == "m.text":
+            await self.sl.say_from_matrix(user_id, room_id, event_id, message.body)
+        elif str(message.msgtype) == "m.emote":
+            await self.sl.say_from_matrix(user_id, room_id, event_id, message.body, emote=True)
+        elif str(message.msgtype) == 'm.image':
+            mxc_url = message.url
+            o = urlparse(mxc_url)
+            domain = o.netloc
+            pic_code = o.path
+            url = f"https://{domain}/_matrix/media/v1/download/{domain}{pic_code}"
+            await self.sl.say_from_matrix(user_id, room_id, event_id, url)
+
+        elif str(message.msgtype) == "m.sticker":
+            mxc_url = message.url
+            o = urlparse(mxc_url)
+            domain = o.netloc
+            pic_code = o.path
+            url = f"https://{domain}/_matrix/media/v1/download/{domain}{pic_code}"
+            await self.sl.say_from_matrix(user_id, room_id, event_id, url)
+
+        else:
+            self.log.debug(message.msgtype)
+
+
     async def handle_event(self, event: Event) -> None:
-        print("YORK")
+
         self.log.debug("HANDLE EVENT")
 
-        domain = self.config['homeserver']['domain']
-        namespace = self.config['appservice']['namespace']
+        domain = self.config['homeserver.domain']
+        namespace = self.config['appservice.namespace']
 
         event_type = event.get("type", "m.unknown")  # type: str
         room_id = event.get("room_id", None)  # type: Optional[RoomID]
@@ -50,38 +80,28 @@ class Matrix:
 
         self.log.debug(f"EVENT {event}")
 
-        self.log.debug(f"EVENT TYPE: {event_type}")
+        self.log.debug(f"EVENT TYPE: {event.type}")
         self.log.debug(f"EVENT ROOM_ID: {room_id}")
         self.log.debug(f"EVENT SENDER: {sender}")
         self.log.debug(f"EVENT CONTENT: {content}")
 
-        if not sender.startswith(f"@{namespace}_"):
-            if event_type == "m.room.message":
+        if event.type == EventType.ROOM_MEMBER:
+            event: StateEvent
+            prev_content = event.unsigned.prev_content or MemberStateEventContent()
+            prev_membership = prev_content.membership if prev_content else Membership.JOIN
 
-                msg_type = content.get("msgtype")
+            if event.content.membership == Membership.LEAVE:
+                if event.sender == event.state_key:
+                    await self.sl.matrix_user_left(UserID(event.state_key), event.room_id, event.event_id)
+            elif event.content.membership == Membership.JOIN:
+                if prev_membership != Membership.JOIN:
+                    await self.sl.matrix_user_joined(UserID(event.state_key), event.room_id, event.event_id)
 
-                body = content.get("body")
-                info = content.get("info")
-
-                if msg_type == "m.text":
-                    await self.sl.say_from(sender, room_id, event_id, body)
-                elif msg_type == "m.emote":
-                    await self.sl.say_from(sender, room_id, event_id, body, emote=True)
-                elif msg_type == "m.image":
-                    mxc_url = event['content']['url']
-                    o = urlparse(mxc_url)
-                    domain = o.netloc
-                    pic_code = o.path
-                    url = f"https://{domain}/_matrix/media/v1/download/{domain}{pic_code}"
-                    await self.sl.say_from(sender, room_id, event_id, url)
-
-            elif event_type == "m.room.member":
-                membership = content.get("membership")
-
-                if membership == "join":
-                    await self.sl.matrix_user_joined(sender, room_id, event_id)
-                elif membership == "leave":
-                    await self.sl.matrix_user_left(sender, room_id, event_id)
+        elif event.type in (EventType.ROOM_MESSAGE, EventType.STICKER):
+            event: MessageEvent
+            if event.type != EventType.ROOM_MESSAGE:
+                event.content.msgtype = MessageType(str(event.type))
+            await self.handle_message(event.room_id, event.sender, event.content, event.event_id)
 
     async def wait_for_connection(self) -> None:
         self.log.info("Ensuring connectivity to homeserver")
@@ -125,7 +145,7 @@ async def main():
 
     logging.config.dictConfig(copy.deepcopy(config["logging"]))
 
-    log = logging.getLogger("matrix-spring.init")  # type: logging.Logger
+    log = logging.getLogger("appservice.main")  # type: logging.Logger
 
     log.info("Initializing matrix spring lobby bridge")
 
@@ -145,7 +165,7 @@ async def main():
 
                          bot_localpart=config["appservice.bot_username"],
 
-                         log="spring_as",
+                         log=log,
                          loop=loop,
 
                          real_user_content_key="org.jauriarts.appservice.puppet",
@@ -155,13 +175,13 @@ async def main():
     port = config["appservice.port"]
 
     spring_lobby_client = SpringLobbyClient(appserv, config, loop=loop)
+
+    await appserv.start(hostname, port)
+    await spring_lobby_client.start()
+
     matrix = Matrix(appserv, spring_lobby_client, config)
 
     appserv.matrix_event_handler(matrix.handle_event)
-
-    await appserv.start(hostname, port)
-
-    await spring_lobby_client.start()
 
     await matrix.wait_for_connection()
     await matrix.init_as_bot()
@@ -169,7 +189,7 @@ async def main():
     appservice_account = await appserv.intent.whoami()
     user = appserv.intent.user(appservice_account)
 
-    user.set_presence = "online"
+    await appserv.intent.set_presence(PresenceState.ONLINE)
 
     # location = config["homeserver"]["domain"].split(".")[0]
     # external_id = "MatrixAppService"
@@ -187,15 +207,19 @@ async def main():
             await user.ensure_joined(room_id=room_id)
             await appserv.intent.add_room_alias(room_id=RoomID(room_id), alias_localpart=room_alias, override=True)
         else:
-            await appserv.intent.remove_room_alias(alias_localpart=room_alias)
-            await user.leave_room(room_id=room_id)
+            # await appserv.intent.remove_room_alias(alias_localpart=room_alias)
+            try:
+                await user.leave_room(room_id=room_id)
+            except Exception as e:
+                log.debug(f"Failed to leave rom, not previously joined: {e}")
+
+    appserv.ready = True
+    log.info("Initialization complete, running startup actions")
 
     for signame in ('SIGINT', 'SIGTERM'):
         loop.add_signal_handler(getattr(signal, signame),
                                 lambda: asyncio.ensure_future(spring_lobby_client.exit(signame)))
 
-    log.info("Initialization complete, running startup actions")
-    appserv.ready = True
     ################
     #
     # Lobby events

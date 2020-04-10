@@ -1,26 +1,30 @@
 import asyncio
 import logging
 import sys
+from asyncio import sleep
 
 from asyncblink import signal as asignal
 
 from collections import defaultdict
 
 from asyncspring.lobby import LobbyProtocol, LobbyProtocolWrapper, connections
+from mautrix.appservice import AppService
+from mautrix.client.api.types import PresenceState
 
 
 class SpringLobbyClient(object):
+    log: logging.Logger
+    appserv: AppService
 
     def __init__(self, appserv, config, loop):
 
-        self.log = logging.getLogger("lobby-client")  # type: logging.Logger
+        self.log = logging.getLogger("lobby")  # type: logging.Logger
 
         self.bot = None
         self.rooms = None
         self.user_rooms = defaultdict(list)
         self.user_info = dict()
         self.appserv = appserv
-        self.appservice = None
         self.presence_timmer = None
         self.bot_username = None
         self.bot_password = None
@@ -31,23 +35,15 @@ class SpringLobbyClient(object):
 
     async def start(self):
 
-        self.log.debug("RUN")
+        self.log.info("Starting Spring lobby client")
 
-        appservice_account = await self.appserv.intent.whoami()
-        self.appservice = self.appserv.intent.user(appservice_account)
-        # await self.appservice.set_presence("online")
+        await self.appserv.intent.set_presence(PresenceState.ONLINE)
 
-        server = self.config["spring.address"]
-        port = self.config["spring.port"]
-        use_ssl = self.config["spring.ssl"]
-        name = self.config["spring.client_name"]
-        flags = self.config["spring.client_flags"]
-
-        self.bot = await self.connect(server=server,
-                                      port=port,
-                                      use_ssl=use_ssl,
-                                      name=name,
-                                      flags=flags)
+        self.bot = await self.connect(server=self.config["spring.address"],
+                                      port=self.config["spring.port"],
+                                      use_ssl=self.config["spring.ssl"],
+                                      name=self.config["spring.client_name"],
+                                      flags=self.config["spring.client_flags"])
 
         self.rooms = self.config["bridge.rooms"]
 
@@ -61,17 +57,16 @@ class SpringLobbyClient(object):
             self.log.info(f"{room_enabled} channel : {channel} room_name : {room_name} room_id : {room_id}")
             if room_enabled:
                 self.bot.channels_to_join.append(channel)
-                await self.appservice.join_room(room_id[0])
+                await self.appserv.intent.join_room(room_id[0])
 
-        self.bot_username = self.config["spring.bot_username"]
-        self.bot_password = self.config["spring.bot_password"]
+        bot_username = self.config["spring.bot_username"]
+        bot_password = self.config["spring.bot_password"]
 
-        self.bot.login(self.bot_username,
-                       self.bot_password)
+        self.bot.login(bot_username, bot_password)
 
     async def _presence_timer(self, user):
         self.log.debug(f"SET presence timmer for user : {user}")
-        user.set_presence = "online"
+        user.set_presence(PresenceState.ONLINE)
 
     async def leave_matrix_rooms(self, username):
         user = self.appserv.intent.user(username)
@@ -79,15 +74,17 @@ class SpringLobbyClient(object):
             await user.leave_room(room)
 
     async def login_matrix_account(self, user_name):
+
         domain = self.config['homeserver.domain']
-        namespace = self.config['appservice.namespace']
-        matrix_id = f"@{namespace}_{user_name.lower()}:{domain}"
-        user = self.appserv.intent.user(matrix_id)
 
-        user.set_presence = "online"
-        user.set_display_name = user_name
-
-        self.presence_timmer = asyncio.get_event_loop().call_later(29, self._presence_timer, user)
+        # namespace = self.config['appservice.namespace']
+        # matrix_id = f"@{namespace}_{user_name.lower()}:{domain}"
+        # user = self.appserv.intent.user(matrix_id)
+        #
+        # user.set_presence(PresenceState.ONLINE)
+        # user.set_display_name(user_name)
+        #
+        # self.presence_timmer = asyncio.get_event_loop().call_later(29, self._presence_timer, user)
 
         self.bot.bridged_client_from(domain, user_name.lower, user_name)
 
@@ -102,8 +99,8 @@ class SpringLobbyClient(object):
         for room_id in rooms:
             await user.leave_room(room_id=room_id)
 
-        await user.set_presence("offline")
-        self.presence_timmer.cancel()
+        # await user.set_presence("offline")
+        # self.presence_timmer.cancel()
         self.bot.un_bridged_client_from(domain, user_name)
 
     async def clean_matrix_rooms(self):
@@ -136,29 +133,24 @@ class SpringLobbyClient(object):
                 self.log.debug(f"channel : {channel}")
                 self.log.debug(f"room_id : {room_id}")
 
-                members = await self.appservice.get_room_members(room_id=room_id)
+                members = await self.appserv.intent.get_room_members(room_id=room_id)
+                self.log.debug(members)
 
+                bot_username = self.config["appservice.bot_username"]
                 domain = self.config['homeserver.domain']
                 namespace = self.config['appservice.namespace']
 
                 for user_id in members:
-                    if user_id == f"@appservice:{domain}":
-                        continue
-                    elif user_id.startswith(f"@{namespace}_"):
-                        continue
-                    else:
+                    self.log.debug(user_id)
+                    if user_id != f"@{bot_username}:{domain}":
+                        self.log.debug(user_id)
+
                         self.user_rooms[user_id].append({"channel": channel, "room_id": room_id})
 
                         domain = user_id.split(":")[1]
                         user_name = user_id.split(":")[0][1:]
+                        display_name = await self.appserv.intent.get_displayname(user_id)
 
-                        user = None
-
-                        while user is None:
-                            self.log.debug("Getting member info ...")
-                            user = await self.appserv.intent.get_member_info(room_id=room_id, user_id=user_id)
-
-                        display_name = user.get("displayname")
                         self.log.debug(user_id)
                         self.log.debug(display_name)
 
@@ -171,9 +163,6 @@ class SpringLobbyClient(object):
                 self.log.debug("############### ROOM DISABLED ###############")
                 self.log.debug(f"channel : {channel}")
                 self.log.debug(f"room_id : {room_id}")
-
-            self.log.debug("#############################################")
-            self.log.debug("")
 
         self.log.debug("############### INITIAL JOINS ###############")
 
@@ -300,6 +289,8 @@ class SpringLobbyClient(object):
 
     async def matrix_user_joined(self, user_id, room_id, event_id=None):
 
+        self.log.debug(f"MATRIX USER JOINED {user_id} {room_id}")
+
         hs_domain = self.config['homeserver.domain']
         namespace = self.config['appservice.namespace']
 
@@ -336,12 +327,15 @@ class SpringLobbyClient(object):
             user_name = self.user_info[user_id].get("user_name")
 
         if event_id:
-            await self.appservice.mark_read(room_id=room_id, event_id=event_id)
+            await self.appserv.intent.mark_read(room_id=room_id, event_id=event_id)
 
         self.log.debug(channel)
 
+        self.log.debug(f"{user_name}, {user_domain}")
+
         if user_name and user_domain:
             display_name = self.user_info[user_id].get("display_name")
+            self.log.debug("JOINFROM")
             self.bot.bridged_client_from(user_domain, user_name, display_name)
             self.bot.join_from(channel, user_domain, user_name)
 
@@ -367,7 +361,7 @@ class SpringLobbyClient(object):
         user_name = self.user_info[user_id].get("user_name")
 
         if event_id:
-            await self.appservice.mark_read(room_id=room_id, event_id=event_id)
+            await self.appserv.intent.mark_read(room_id=room_id, event_id=event_id)
 
         self.log.debug(channel)
 
@@ -375,7 +369,7 @@ class SpringLobbyClient(object):
 
         self.log.debug("MATRIX USER LEAVES SUSSCESS")
 
-    async def say_from(self, user_id, room_id, event_id, body, emote=False):
+    async def say_from_matrix(self, user_id, room_id, event_id, body, emote=False):
 
         namespace = self.config['appservice.namespace']
 
@@ -388,12 +382,12 @@ class SpringLobbyClient(object):
             stored_room_id = room_data["room_id"]
             enabled = room_data["enabled"]
 
-            if enabled == str('True'):
+            if enabled is True:
                 self.log.debug(f"{stored_room_id} {room_id}")
                 if stored_room_id == room_id:
                     channel = room_name
             else:
-                self.log.debug(f"room id: {room_id} active: {enabled}")
+                self.log.debug(f"room id: {stored_room_id} active: {enabled}")
 
         if channel is None:
             self.log.debug(f"room id {room_id} found in room_list")
@@ -410,9 +404,13 @@ class SpringLobbyClient(object):
                 domain = "frenode.org"
                 user_name = user_name.lstrip("freenode_")
 
-            await self.appservice.mark_read(room_id=room_id, event_id=event_id)
+            self.log.debug(f"SAY {user_name} {domain} {channel} {body}")
+            if emote is True:
+                self.bot.say_ex(user_name, domain, channel, body)
+            else:
+                self.bot.say_from(user_name, domain, channel, body)
 
-            self.bot.say_from(user_name, domain, channel, body)
+            await self.appserv.intent.mark_read(room_id=room_id, event_id=event_id)
 
     async def exit(self, signal_name):
         self.log.debug("Singal received exiting")
