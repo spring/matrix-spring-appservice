@@ -405,10 +405,10 @@ class SpringLobbyClient(object):
                 user_name = user_name.lstrip("freenode_")
 
             self.log.debug(f"SAY {user_name} {domain} {channel} {body}")
-            if emote is True:
-                self.bot.say_ex(user_name, domain, channel, body)
-            else:
-                self.bot.say_from(user_name, domain, channel, body)
+            # if emote is True:
+            #     self.bot.say_ex(user_name, domain, channel, body)
+            # else:
+            self.bot.say_from(user_name, domain, channel, body)
 
             await self.appserv.intent.mark_read(room_id=room_id, event_id=event_id)
 
