@@ -37,7 +37,7 @@ class SpringLobbyClient(object):
 
         self.log.info("Starting Spring lobby client")
 
-        await self.appserv.intent.set_presence(PresenceState.ONLINE)
+        # await self.appserv.intent.set_presence(PresenceState.ONLINE)
 
         self.bot = await self.connect(server=self.config["spring.address"],
                                       port=self.config["spring.port"],
