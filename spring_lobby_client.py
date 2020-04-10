@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import asyncio
 import logging
 import sys
@@ -140,8 +142,6 @@ class SpringLobbyClient(object):
                         member.avatar_url = info["avatar_url"]
 
                     self.appserv.state_store.set_member(room_id, mxid, member)
-            else:
-                await self.appserv.intent.leave_room(room_id=room_id)
 
         for room_id, members in self.appserv.state_store.members.items():
 
@@ -404,7 +404,7 @@ class SpringLobbyClient(object):
     def login(self, args=None):
         for channel in self.rooms:
             self.bot.channels_to_join.append(channel)
-        self.bot.login(self.bot_username, self.bot_password)
+        self.bot.login(self.config["spring.bot_username"], self.config["spring.bot_password"])
 
     async def connect(self, server, port=8200, use_ssl=False, name=None, flags=None):
         """
