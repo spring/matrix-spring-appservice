@@ -71,6 +71,7 @@ class Config(BaseBridgeConfig):
         copy("bridge.command_prefix")
         copy("bridge.username_template")
         copy("bridge.alias_template")
+        copy("bridge.rooms")
 
     @property
     def namespaces(self) -> Dict[str, List[Dict[str, Any]]]:

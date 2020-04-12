@@ -1,6 +1,24 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+#   Copyright (c) 2020 TurBoss
+#         <turboss@mail.com>
+#
+#   This file is part of Matrix Spring Appservice.
+#
+#   This program is free software: you can redistribute it and/or modify
+#   it under the terms of the GNU General Public License as published by
+#   the Free Software Foundation, either version 3 of the License, or
+#   (at your option) any later version.
+#
+#   This program is distributed in the hope that it will be useful,
+#   but WITHOUT ANY WARRANTY; without even the implied warranty of
+#   MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#   GNU General Public License for more details.
+#
+#   You should have received a copy of the GNU General Public License
+#   along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
 import asyncio
 import logging.config
 import signal
@@ -41,7 +59,6 @@ class Matrix:
 
         self.log.debug(f"message \"{message}\" from {user_id} to {room_id}:")
 
-        # print(type(message.msgtype))
         if str(message.msgtype) == "m.text":
             await self.sl.say_from_matrix(user_id, room_id, event_id, message.body)
         elif str(message.msgtype) == "m.emote":
@@ -63,12 +80,11 @@ class Matrix:
             await self.sl.say_from_matrix(user_id, room_id, event_id, url)
 
         else:
-            self.log.debug(message.msgtype)
-
+            self.log.debug(f"Unhandled message type {message.msgtype}")
 
     async def handle_event(self, event: Event) -> None:
 
-        self.log.debug("HANDLE EVENT")
+        self.log.debug("Handle event")
 
         domain = self.config['homeserver.domain']
         namespace = self.config['appservice.namespace']
@@ -79,12 +95,12 @@ class Matrix:
         sender = event.get("sender", None)  # type: Optional[UserID]
         content = event.get("content", {})  # type: Dict
 
-        self.log.debug(f"EVENT {event}")
+        self.log.debug(f"Event {event}")
 
-        self.log.debug(f"EVENT TYPE: {event.type}")
-        self.log.debug(f"EVENT ROOM_ID: {room_id}")
-        self.log.debug(f"EVENT SENDER: {sender}")
-        self.log.debug(f"EVENT CONTENT: {content}")
+        self.log.debug(f"Event type: {event.type}")
+        self.log.debug(f"Event room_id: {room_id}")
+        self.log.debug(f"Event sender: {sender}")
+        self.log.debug(f"Event content: {content}")
 
         if event.type == EventType.ROOM_MEMBER:
             event: StateEvent
@@ -157,6 +173,7 @@ async def main():
     ################
 
     mebibyte = 1024 ** 2
+
     appserv = AppService(server=config["homeserver.address"],
                          domain=config["homeserver.domain"],
                          verify_ssl=config["homeserver.verify_ssl"],
@@ -299,7 +316,7 @@ async def main():
             try:
                 await user.leave_room(room_id=room_id)
             except Exception as e:
-                log.debug(f"Failed to leave rom, not previously joined: {e}")
+                log.debug(f"Failed to leave room, not previously joined: {e}")
 
     appserv.ready = True
     log.info("Initialization complete, running startup actions")
