@@ -185,10 +185,10 @@ class SpringLobbyClient(object):
                     self.log.debug(f"Bridging user {user} for {location} externalID {external_id} externalUsername {external_username}")
 
                     if external_id.startswith("_discord_"):
-                        external_id.lstrip("_discord_")
+                        external_id = external_id.lstrip("_discord_")
                         location = "discord"
                     elif external_id.startswith("freenode"):
-                        external_id.lstrip("freenode_")
+                        external_id = external_id.lstrip("freenode_")
                         location = "freenode.org"
 
                     self.bot.bridged_client_from(location=location,
