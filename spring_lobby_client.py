@@ -175,19 +175,27 @@ class SpringLobbyClient(object):
         matrix_users = set(val for key, dic in self.appserv.state_store.members.items() for val in dic.keys())
 
         for user in matrix_users:
-            user_domain = self.appserv.intent.user(user_id=UserID(user)).domain
-            user_name = self.appserv.intent.user(user_id=UserID(user)).localpart
-            user_display_name = await self.appserv.intent.get_displayname(UserID(user)) or user_name
+            location = self.appserv.intent.user(user_id=UserID(user)).domain
+            external_id = self.appserv.intent.user(user_id=UserID(user)).localpart
+            external_username = await self.appserv.intent.get_displayname(UserID(user)) or external_id
 
-            if user_name != self.config["appservice.bot_username"]:
-                if user_name.startswith(self.config["appservice.namespace"]) is False:
+            if external_id != self.config["appservice.bot_username"]:
+                if external_id.startswith(self.config["appservice.namespace"]) is False:
 
-                    self.log.debug(f"Bridging user {user} for {user_domain} externalID {user_name} externalUsername {user_display_name}")
-                    self.bot.bridged_client_from(location=user_domain,
-                                                 external_id=user_name,
-                                                 external_username=user_display_name)
+                    self.log.debug(f"Bridging user {user} for {location} externalID {external_id} externalUsername {external_username}")
+
+                    if external_id.startswith("_discord_"):
+                        external_id.lstrip("_discord_")
+                        location = "discord"
+                    elif external_id.startswith("freenode"):
+                        external_id.lstrip("freenode_")
+                        location = "freenode.org"
+
+                    self.bot.bridged_client_from(location=location,
+                                                 external_id=external_id,
+                                                 external_username=external_username)
             else:
-                self.log.debug(f"Ignoring local user {user_name}, domain {user_domain}. displayname {user_display_name}")
+                self.log.debug(f"Ignoring local user {external_id}, domain {location}. external_username {external_username}")
 
         for room_id, members in self.appserv.state_store.members.items():
 
