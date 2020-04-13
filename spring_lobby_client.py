@@ -166,7 +166,7 @@ class SpringLobbyClient(object):
                         member.avatar_url = info["avatar_url"]
 
                     if mxid.startswith(f"@{bot_username}") is not True:
-                        self.log.debug(f"StateStore: set member room_id {room_id} mxid {mxid} member {member}")
+                        # self.log.debug(f"StateStore: set member room_id {room_id} mxid {mxid} member {member}")
                         self.appserv.state_store.set_member(room_id, mxid, member)
             else:
                 self.log.debug(f"Room {spring_room} disabled")
