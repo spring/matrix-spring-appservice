@@ -179,23 +179,24 @@ class SpringLobbyClient(object):
             external_id = self.appserv.intent.user(user_id=UserID(user)).localpart
             external_username = await self.appserv.intent.get_displayname(UserID(user)) or external_id
 
-            if external_id != self.config["appservice.bot_username"]:
-                if external_id.startswith(self.config["appservice.namespace"]) is False:
-
-                    self.log.debug(f"Bridging user {user} for {location} externalID {external_id} externalUsername {external_username}")
-
-                    if external_id.startswith("_discord_"):
-                        external_id = external_id.lstrip("_discord_")
-                        location = "discord"
-                    elif external_id.startswith("freenode"):
-                        external_id = external_id.lstrip("freenode_")
-                        location = "freenode.org"
-
-                    self.bot.bridged_client_from(location=location,
-                                                 external_id=external_id,
-                                                 external_username=external_username)
-            else:
+            if external_id == self.config["appservice.bot_username"]:
+                self.log.debug(f"Not bridging the local appservice")
+                continue
+            elif external_id.startswith(self.config["appservice.namespace"]):
                 self.log.debug(f"Ignoring local user {external_id}, domain {location}. external_username {external_username}")
+                continue
+
+            if external_id.startswith("_discord_"):
+                external_id = external_id.lstrip("_discord_")
+                location = "discord"
+            elif external_id.startswith("freenode"):
+                external_id = external_id.lstrip("freenode_")
+                location = "freenode.org"
+
+            self.log.debug(f"Bridging user {user} for {location} externalID {external_id} externalUsername {external_username}")
+            self.bot.bridged_client_from(location=location,
+                                         external_id=external_id,
+                                         external_username=external_username)
 
         for room_id, members in self.appserv.state_store.members.items():
 
