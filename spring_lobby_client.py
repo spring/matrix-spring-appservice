@@ -95,7 +95,7 @@ class SpringLobbyClient(object):
     async def login_matrix_account(self, user_name):
 
         self.log.debug(f"User {user_name} joined from lobby")
-        domain = self.config['homeserver.domain']
+        # domain = self.config['homeserver.domain']
 
         # namespace = self.config['appservice.namespace']
         # matrix_id = f"@{namespace}_{user_name.lower()}:{domain}"
@@ -183,7 +183,7 @@ class SpringLobbyClient(object):
                 self.log.debug(f"Not bridging the local appservice")
                 continue
             elif external_id.startswith(self.config["appservice.namespace"]):
-                self.log.debug(f"Ignoring local user {external_id}, domain {location}. external_username {external_username}")
+                self.log.debug(f"Ignoring local user {user}")
                 continue
 
             if external_id.startswith("_discord_"):
@@ -247,8 +247,6 @@ class SpringLobbyClient(object):
     async def join_matrix_room(self, room, clients):
 
         room_id = self.rooms[room]["room_id"]
-        self.log.debug(room_id)
-
         for client in clients:
             if client != "appservice":
                 domain = self.config['homeserver.domain']

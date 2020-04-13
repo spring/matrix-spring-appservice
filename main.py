@@ -244,36 +244,36 @@ async def main():
         if message.client.name == client_name:
             await spring_lobby_client.saidex(user, target, text)
 
-    @spring_lobby_client.bot.on("denied")
-    async def on_lobby_denied(message):
-        return
-        # if message.client.name != client_name:
-        #    user = message.client.name
-        #    await spring_appservice.register(user)
+    # @spring_lobby_client.bot.on("denied")
+    # async def on_lobby_denied(message):
+    #     return
+    #     # if message.client.name != client_name:
+    #     #    user = message.client.name
+    #     #    await spring_appservice.register(user)
 
-    @spring_lobby_client.bot.on("adduser")
-    async def on_lobby_adduser(message):
-        if message.client.name != client_name:
-            username = message.params[0]
+    # @spring_lobby_client.bot.on("adduser")
+    # async def on_lobby_adduser(message):
+    #     if message.client.name != client_name:
+    #         username = message.params[0]
+    #
+    #         if username == "ChanServ":
+    #             return
+    #         if username == "appservice":
+    #             return
+    #
+    #         await spring_lobby_client.login_matrix_account(username)
 
-            if username == "ChanServ":
-                return
-            if username == "appservice":
-                return
-
-            await spring_lobby_client.login_matrix_account(username)
-
-    @spring_lobby_client.bot.on("removeuser")
-    async def on_lobby_removeuser(message):
-        if message.client.name != client_name:
-            username = message.params[0]
-
-            if username == "ChanServ":
-                return
-            if username == "appservice":
-                return
-
-            await spring_lobby_client.logout_matrix_account(username)
+    # @spring_lobby_client.bot.on("removeuser")
+    # async def on_lobby_removeuser(message):
+    #     if message.client.name != client_name:
+    #         username = message.params[0]
+    #
+    #         if username == "ChanServ":
+    #             return
+    #         if username == "appservice":
+    #             return
+    #
+    #         await spring_lobby_client.logout_matrix_account(username)
 
     @spring_lobby_client.bot.on("accepted")
     async def on_lobby_accepted(message):
