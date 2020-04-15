@@ -189,10 +189,13 @@ class SpringLobbyClient(object):
             self.log.debug(f"User {user}")
             user_localpart, user_domain = self.appserv.intent.parse_user_id(user)
 
-            member_data = await self.appserv.intent.get_profile(UserID(user))
-            pprint(member_data)
-            user_displayname = member_data.displayname
-
+            try:
+                member_data = await self.appserv.intent.get_profile(UserID(user))
+                user_displayname = member_data.displayname
+                if len(user_displayname) > 15:
+                    user_displayname = user_displayname[:15]
+            except Exception as e:
+                user_displayname = user_localpart
             self.log.debug(f"Bridging user {user} for {user_domain} externalID {user_localpart} externalUsername {user_displayname}")
             await asyncio.sleep(0.1)
             self.bot.bridged_client_from(location=user_domain,
@@ -213,7 +216,6 @@ class SpringLobbyClient(object):
                 self.log.debug(f"\tMember: {member}")
 
                 user_localpart, user_domain = self.appserv.intent.parse_user_id(member)
-                member_data = await self.appserv.intent.get_profile(UserID(member))
 
                 if user_localpart == self.config["appservice.bot_username"]:
                     self.log.debug(f"Not bridging the local appservice")
@@ -233,12 +235,12 @@ class SpringLobbyClient(object):
                     user_domain = "freenode.org"
                 elif user_localpart.startswith("spring"):
                     user_localpart = user_localpart.lstrip("spring_")
-
-                if member_data:
+                try:
+                    member_data = await self.appserv.intent.get_profile(UserID(member))
                     user_displayname = member_data.displayname
                     if len(user_displayname) > 15:
                         user_displayname = user_displayname[:15]
-                else:
+                except Exception as e:
                     user_displayname = user_localpart
 
                 self.log.debug(f"user_name = {user_localpart}")
