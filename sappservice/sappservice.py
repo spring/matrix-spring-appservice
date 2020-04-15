@@ -153,7 +153,7 @@ class Matrix:
                 self.log.exception("Failed to set bot avatar")
 
 
-async def main():
+async def sappservice(loop):
 
     config = Config("config.yaml", None, None)
     config.load()
@@ -323,7 +323,11 @@ async def main():
                                 lambda: asyncio.ensure_future(spring_lobby_client.exit(signame)))
 
 
-if __name__ == "__main__":
+def main():
     loop = asyncio.get_event_loop()  # type: asyncio.AbstractEventLoop
-    loop.run_until_complete(main())
+    loop.run_until_complete(sappservice(loop=loop))
     loop.run_forever()
+
+
+if __name__ == "__main__":
+    main()
