@@ -192,10 +192,16 @@ class SpringLobbyClient(object):
             try:
                 member_data = await self.appserv.intent.get_profile(UserID(user))
                 user_displayname = member_data.displayname
-                if len(user_displayname) > 15:
-                    user_displayname = user_displayname[:15]
             except Exception as e:
                 user_displayname = user_localpart
+
+            if len(user_displayname) > 15:
+                user_displayname = user_displayname[:15]
+            if len(user_localpart) > 15:
+                user_localpart = user_localpart[:15]
+            if len(user_domain) > 15:
+                user_domain = user_domain[:15]
+
             self.log.debug(f"Bridging user {user} for {user_domain} externalID {user_localpart} externalUsername {user_displayname}")
             await asyncio.sleep(0.1)
             self.bot.bridged_client_from(location=user_domain,
@@ -238,10 +244,15 @@ class SpringLobbyClient(object):
                 try:
                     member_data = await self.appserv.intent.get_profile(UserID(member))
                     user_displayname = member_data.displayname
-                    if len(user_displayname) > 15:
-                        user_displayname = user_displayname[:15]
                 except Exception as e:
                     user_displayname = user_localpart
+
+                if len(user_displayname) > 15:
+                    user_displayname = user_displayname[:15]
+                if len(user_localpart) > 15:
+                    user_localpart = user_localpart[:15]
+                if len(user_domain) > 15:
+                    user_domain = user_domain[:15]
 
                 self.log.debug(f"user_name = {user_localpart}")
                 self.log.debug(f"display_name = {user_displayname}")
