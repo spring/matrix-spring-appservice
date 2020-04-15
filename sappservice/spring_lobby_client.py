@@ -213,7 +213,7 @@ class SpringLobbyClient(object):
                 self.log.debug(f"\tMember: {member}")
 
                 user_localpart, user_domain = self.appserv.intent.parse_user_id(member)
-                user_displayname = asyncio.ensure_future(self.appserv.intent.get_profile(UserID(member)))
+                user_displayname = await self.appserv.intent.get_profile(UserID(member))
 
                 print(user_displayname)
 
