@@ -26,7 +26,6 @@ import signal
 from typing import Optional, Dict
 from urllib.parse import urlparse
 
-import copy
 from mautrix.bridge import BaseBridgeConfig
 from mautrix.client.api.types import PresenceState
 from mautrix.errors import MForbidden
@@ -159,7 +158,7 @@ async def sappservice(loop):
     config = Config("config.yaml", None, None)
     config.load()
 
-    logging.config.dictConfig(copy.deepcopy(config["logging"]))
+    # logging.config.dictConfig(copy.deepcopy(config["logging"]))
 
     log = logging.getLogger("appservice.main")  # type: logging.Logger
 
