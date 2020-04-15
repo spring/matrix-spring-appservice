@@ -213,9 +213,7 @@ class SpringLobbyClient(object):
                 self.log.debug(f"\tMember: {member}")
 
                 user_localpart, user_domain = self.appserv.intent.parse_user_id(member)
-                user_displayname = await self.appserv.intent.get_profile(UserID(member))
-
-                print(user_displayname)
+                member_data = await self.appserv.intent.get_profile(UserID(member))
 
                 if user_localpart == self.config["appservice.bot_username"]:
                     self.log.debug(f"Not bridging the local appservice")
@@ -236,10 +234,8 @@ class SpringLobbyClient(object):
                 elif user_localpart.startswith("spring"):
                     user_localpart = user_localpart.lstrip("spring_")
 
-                if user_displayname:
-                    user_displayname = user_displayname.lstrip('@')
-                    user_displayname = user_displayname.replace('-', '_')
-                    user_displayname = user_displayname.replace('.', '_')
+                if member_data:
+                    user_displayname = member_data.displayname
                     if len(user_displayname) > 15:
                         user_displayname = user_displayname[:15]
                 else:
