@@ -152,7 +152,7 @@ class SpringLobbyClient(object):
             room_id = RoomID(room_data.get("room_id"))
             enabled = room_data.get("enabled")
 
-            if enabled :
+            if enabled:
                 self.log.debug(f"Room {spring_room} enabled")
                 await self.appserv.intent.ensure_joined(room_id=room_id)
                 resp = await self.appserv.intent.get_room_joined_memberships(room_id)
@@ -188,10 +188,10 @@ class SpringLobbyClient(object):
         for user in matrix_users:
             self.log.debug(f"User {user}")
             user_localpart, user_domain = self.appserv.intent.parse_user_id(user)
-            try:
-                user_displayname = await self.appserv.intent.get_displayname(UserID(user))
-            except KeyError as ke:
-                user_displayname = user_localpart
+
+            member_data = await self.appserv.intent.get_profile(UserID(user))
+            pprint(member_data)
+            user_displayname = member_data.displayname
 
             self.log.debug(f"Bridging user {user} for {user_domain} externalID {user_localpart} externalUsername {user_displayname}")
             await asyncio.sleep(0.1)
