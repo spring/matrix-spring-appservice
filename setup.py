@@ -21,9 +21,9 @@ setuptools.setup(
         "asyncblink",
         "ruamel.yaml",
         "aiohttp",
-        "git+https://github.com/TurBoss/asyncspring.git"
 
     ],
+    dependency_links=['http://github.com/TurBoss/asyncspring/tarball/master'],
     extras_require={
     },
     python_requires="~=3.6",
