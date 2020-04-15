@@ -18,8 +18,6 @@ import os
 from typing import Optional, Dict, List, Any
 
 from mautrix.bridge.config import (BaseBridgeConfig, ConfigUpdateHelper)
-from mautrix.util.config import BaseConfig, RecursiveDict
-from ruamel.yaml.comments import CommentedMap
 
 from ruamel.yaml import YAML
 
@@ -37,7 +35,6 @@ class Config(BaseBridgeConfig):
             return super().__getitem__(key)
 
     def do_update(self, helper: ConfigUpdateHelper) -> None:
-        print(self)
         copy, copy_dict, base = helper
 
         copy("homeserver.address")

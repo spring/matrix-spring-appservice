@@ -61,7 +61,7 @@ target/
 
 venv/
 
-config\.yaml
+sappservice/config.yaml
 
 state_store\.json
 

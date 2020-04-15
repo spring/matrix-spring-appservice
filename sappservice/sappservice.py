@@ -23,7 +23,6 @@ import asyncio
 import logging.config
 import signal
 
-import copy
 from typing import Optional, Dict
 from urllib.parse import urlparse
 
@@ -31,13 +30,12 @@ from mautrix.bridge import BaseBridgeConfig
 from mautrix.client.api.types import PresenceState
 from mautrix.errors import MForbidden
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
-                           MessageEventContent, StateEvent, Membership, MemberStateEventContent,
-                           PresenceEvent, TypingEvent, ReceiptEvent, TextMessageEventContent)
+                           MessageEventContent, StateEvent, Membership, MemberStateEventContent)
 from mautrix.appservice import AppService
 
-from config import Config
+from sappservice.config import Config
 
-from spring_lobby_client import SpringLobbyClient
+from sappservice.spring_lobby_client import SpringLobbyClient
 
 
 class Matrix:
@@ -59,11 +57,11 @@ class Matrix:
 
         self.log.debug(f"message \"{message}\" from {user_id} to {room_id}:")
 
-        if str(message.msgtype) == "m.text":
+        if message.msgtype == MessageType.TEXT:
             await self.sl.say_from_matrix(user_id, room_id, event_id, message.body)
-        elif str(message.msgtype) == "m.emote":
+        elif message.msgtype == MessageType.EMOTE:
             await self.sl.say_from_matrix(user_id, room_id, event_id, message.body, emote=True)
-        elif str(message.msgtype) == 'm.image':
+        elif message.msgtype == MessageType.IMAGE:
             mxc_url = message.url
             o = urlparse(mxc_url)
             domain = o.netloc
@@ -71,7 +69,7 @@ class Matrix:
             url = f"https://{domain}/_matrix/media/v1/download/{domain}{pic_code}"
             await self.sl.say_from_matrix(user_id, room_id, event_id, url)
 
-        elif str(message.msgtype) == "m.sticker":
+        elif message.msgtype == MessageType.STICKER:
             mxc_url = message.url
             o = urlparse(mxc_url)
             domain = o.netloc
@@ -160,11 +158,11 @@ async def main():
     config = Config("config.yaml", None, None)
     config.load()
 
-    logging.config.dictConfig(copy.deepcopy(config["logging"]))
+    # logging.config.dictConfig(copy.deepcopy(config["logging"]))
 
     log = logging.getLogger("appservice.main")  # type: logging.Logger
 
-    log.info("Initializing matrix spring lobby bridge")
+    log.info("Initializing matrix spring lobby appservice")
 
     ################
     #
@@ -197,24 +195,23 @@ async def main():
     await appserv.start(hostname, port)
     await spring_lobby_client.start()
 
-
     ################
     #
     # Lobby events
     #
     ################
 
-    client_name = config['spring']['client_name']
+    client_name = config['spring.client_name']
 
     log.info("Startup actions complete, now running forever")
-
-    @spring_lobby_client.bot.on("clients")
-    async def on_lobby_clients(message):
-        log.debug(f"on_lobby_clients {message}")
-        if message.client.name != client_name:
-            channel = message.params[0]
-            clients = message.params[1:]
-            await spring_lobby_client.join_matrix_room(channel, clients)
+    #
+    # @spring_lobby_client.bot.on("clients")
+    # async def on_lobby_clients(message):
+    #     log.debug(f"on_lobby_clients {message}")
+    #     if message.client.name != client_name:
+    #         channel = message.params[0]
+    #         clients = message.params[1:]
+    #         await spring_lobby_client.join_matrix_room(channel, clients)
 
     @spring_lobby_client.bot.on("joined")
     async def on_lobby_joined(message, user, channel):
@@ -311,12 +308,12 @@ async def main():
         if enabled is True:
             await user.ensure_joined(room_id=room_id)
             await appserv.intent.add_room_alias(room_id=RoomID(room_id), alias_localpart=room_alias, override=True)
-        else:
-            # await appserv.intent.remove_room_alias(alias_localpart=room_alias)
-            try:
-                await user.leave_room(room_id=room_id)
-            except Exception as e:
-                log.debug(f"Failed to leave room, not previously joined: {e}")
+        # else:
+        #     # await appserv.intent.remove_room_alias(alias_localpart=room_alias)
+        #     try:
+        #         await user.leave_room(room_id=room_id)
+        #     except Exception as e:
+        #         log.debug(f"Failed to leave room, not previously joined: {e}")
 
     appserv.ready = True
     log.info("Initialization complete, running startup actions")
