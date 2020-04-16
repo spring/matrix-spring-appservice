@@ -158,12 +158,13 @@ class Matrix:
 
 
 async def sappservice(config_filename, loop):
+
     config = Config(config_filename, None, None)
     config.load()
 
     logging.config.dictConfig(copy.deepcopy(config["logging"]))
 
-    log = logging.getLogger("appservice.main")  # type: logging.Logger
+    log = logging.getLogger("sappservice")  # type: logging.Logger
 
     log.info("Initializing matrix spring lobby appservice")
 
@@ -192,6 +193,8 @@ async def sappservice(config_filename, loop):
 
     hostname = config["appservice.hostname"]
     port = config["appservice.port"]
+    client_name = config['spring.client_name']
+    rooms = config["bridge"]["rooms"]
 
     spring_lobby_client = SpringLobbyClient(appserv, config, loop=loop)
 
@@ -204,11 +207,6 @@ async def sappservice(config_filename, loop):
     #
     ################
 
-    client_name = config['spring.client_name']
-
-    log.info("Startup actions complete, now running forever")
-
-    #
     # @spring_lobby_client.bot.on("clients")
     # async def on_lobby_clients(message):
     #     log.debug(f"on_lobby_clients {message}")
@@ -292,8 +290,8 @@ async def sappservice(config_filename, loop):
     await matrix.wait_for_connection()
     await matrix.init_as_bot()
 
-    appservice_account = await appserv.intent.whoami()
-    user = appserv.intent.user(appservice_account)
+    # appservice_account = await appserv.intent.whoami()
+    # user = appserv.intent.user(appservice_account)
 
     await appserv.intent.set_presence(PresenceState.ONLINE)
 
@@ -301,23 +299,21 @@ async def sappservice(config_filename, loop):
     # external_id = "MatrixAppService"
     # external_username = config["appservice"]["bot_username"].split("_")[1]
 
-    rooms = config["bridge"]["rooms"]
-
-    for room in rooms:
-
-        enabled = config["bridge.rooms"][room]["enabled"]
-        room_id = config["bridge.rooms"][room]["room_id"]
-        room_alias = f"{config['appservice.namespace']}_{room}"
-
-        if enabled is True:
-            await user.ensure_joined(room_id=room_id)
-            await appserv.intent.add_room_alias(room_id=RoomID(room_id), alias_localpart=room_alias, override=True)
-        # else:
-        #     # await appserv.intent.remove_room_alias(alias_localpart=room_alias)
-        #     try:
-        #         await user.leave_room(room_id=room_id)
-        #     except Exception as e:
-        #         log.debug(f"Failed to leave room, not previously joined: {e}")
+    # for room in rooms:
+    #
+    #     enabled = config["bridge.rooms"][room]["enabled"]
+    #     room_id = config["bridge.rooms"][room]["room_id"]
+    #     room_alias = f"{config['appservice.namespace']}_{room}"
+    #
+    #     if enabled is True:
+    #         await user.ensure_joined(room_id=room_id)
+    #         await appserv.intent.add_room_alias(room_id=RoomID(room_id), alias_localpart=room_alias, override=True)
+    #     # else:
+    #     #     # await appserv.intent.remove_room_alias(alias_localpart=room_alias)
+    #     #     try:
+    #     #         await user.leave_room(room_id=room_id)
+    #     #     except Exception as e:
+    #     #         log.debug(f"Failed to leave room, not previously joined: {e}")
 
     appserv.ready = True
     log.info("Initialization complete, running startup actions")
