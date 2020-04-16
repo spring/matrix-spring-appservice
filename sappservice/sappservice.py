@@ -177,25 +177,37 @@ async def sappservice(config_filename, loop):
 
     mebibyte = 1024 ** 2
 
-    appserv = AppService(server=config["homeserver.address"],
-                         domain=config["homeserver.domain"],
-                         verify_ssl=config["homeserver.verify_ssl"],
+    server = config["homeserver.address"]
+    domain = config["homeserver.domain"]
+    verify_ssl = config["homeserver.verify_ssl"]
 
-                         as_token=config["appservice.as_token"],
-                         hs_token=config["appservice.hs_token"],
+    as_token = config["appservice.as_token"]
+    hs_token = config["appservice.hs_token"]
 
-                         bot_localpart=config["appservice.bot_username"],
-
-                         log=log,
-                         loop=loop,
-
-                         real_user_content_key="org.jauriarts.appservice.puppet",
-                         aiohttp_params={"client_max_size": config["appservice.max_body_size"] * mebibyte})
+    bot_localpart = config["appservice.bot_username"]
+    max_body_size = config["appservice.max_body_size"]
 
     hostname = config["appservice.hostname"]
     port = config["appservice.port"]
     client_name = config['spring.client_name']
     rooms = config["bridge"]["rooms"]
+
+
+    appserv = AppService(server=server,
+                         domain=domain,
+                         verify_ssl=verify_ssl,
+
+                         as_token=as_token,
+                         hs_token=hs_token,
+
+                         bot_localpart=bot_localpart,
+
+                         log=log,
+                         loop=loop,
+
+                         real_user_content_key="org.jauriarts.appservice.puppet",
+                         aiohttp_params={"client_max_size": max_body_size * mebibyte})
+
 
     spring_lobby_client = SpringLobbyClient(appserv, config, loop=loop)
 
