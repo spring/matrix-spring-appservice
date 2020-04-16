@@ -19,6 +19,7 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import argparse
 import asyncio
 import logging.config
 import signal
@@ -27,6 +28,7 @@ from typing import Optional, Dict
 from urllib.parse import urlparse
 
 import copy
+
 from mautrix.bridge import BaseBridgeConfig
 from mautrix.client.api.types import PresenceState
 from mautrix.errors import MForbidden
@@ -37,8 +39,6 @@ from mautrix.appservice import AppService
 from sappservice.config import Config
 
 from sappservice.spring_lobby_client import SpringLobbyClient
-
-
 
 
 class Matrix:
@@ -156,9 +156,8 @@ class Matrix:
                 self.log.exception("Failed to set bot avatar")
 
 
-async def sappservice(loop):
-
-    config = Config("config.yaml", None, None)
+async def sappservice(config_filename, loop):
+    config = Config(config_filename, None, None)
     config.load()
 
     logging.config.dictConfig(copy.deepcopy(config["logging"]))
@@ -207,6 +206,7 @@ async def sappservice(loop):
     client_name = config['spring.client_name']
 
     log.info("Startup actions complete, now running forever")
+
     #
     # @spring_lobby_client.bot.on("clients")
     # async def on_lobby_clients(message):
@@ -327,8 +327,14 @@ async def sappservice(loop):
 
 
 def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-c', '--config')
+    args = parser.parse_args()
+
+    config_filename = args.config
+
     loop = asyncio.get_event_loop()  # type: asyncio.AbstractEventLoop
-    loop.run_until_complete(sappservice(loop=loop))
+    loop.run_until_complete(sappservice(config_filename=config_filename, loop=loop))
     loop.run_forever()
 
 
