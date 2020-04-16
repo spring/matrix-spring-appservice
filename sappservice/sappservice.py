@@ -23,6 +23,7 @@ import argparse
 import asyncio
 import logging.config
 import signal
+import sys
 
 from typing import Optional, Dict
 from urllib.parse import urlparse
@@ -332,6 +333,11 @@ def main():
     args = parser.parse_args()
 
     config_filename = args.config
+    if config_filename is None:
+        print("""sappservice\n
+ussage: sappservice -c config.yaml
+""")
+        sys.exit(1)
 
     loop = asyncio.get_event_loop()  # type: asyncio.AbstractEventLoop
     loop.run_until_complete(sappservice(config_filename=config_filename, loop=loop))
