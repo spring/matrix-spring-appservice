@@ -190,7 +190,7 @@ async def sappservice(config_filename, loop):
     hostname = config["appservice.hostname"]
     port = config["appservice.port"]
     client_name = config['spring.client_name']
-    rooms = config["bridge"]["rooms"]
+    rooms = config["bridge.rooms"]
 
 
     appserv = AppService(server=server,

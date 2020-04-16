@@ -65,6 +65,18 @@ class Config(BaseBridgeConfig):
         copy("appservice.as_token")
         copy("appservice.hs_token")
 
+        copy("spring.client_name")
+
+        copy("spring.address")
+        copy("spring.port")
+        copy("spring.ssl")
+        copy("spring.bot_username")
+        copy("spring.bot_password")
+
+        copy("spring.client_name")
+        copy("spring.client_flags")
+        copy("spring.comunity_id")
+
         copy("bridge.command_prefix")
         copy("bridge.username_template")
         copy("bridge.alias_template")
