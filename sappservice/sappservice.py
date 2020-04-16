@@ -26,6 +26,7 @@ import signal
 from typing import Optional, Dict
 from urllib.parse import urlparse
 
+import copy
 from mautrix.bridge import BaseBridgeConfig
 from mautrix.client.api.types import PresenceState
 from mautrix.errors import MForbidden
@@ -36,6 +37,8 @@ from mautrix.appservice import AppService
 from sappservice.config import Config
 
 from sappservice.spring_lobby_client import SpringLobbyClient
+
+
 
 
 class Matrix:
@@ -158,7 +161,7 @@ async def sappservice(loop):
     config = Config("config.yaml", None, None)
     config.load()
 
-    # logging.config.dictConfig(copy.deepcopy(config["logging"]))
+    logging.config.dictConfig(copy.deepcopy(config["logging"]))
 
     log = logging.getLogger("appservice.main")  # type: logging.Logger
 
