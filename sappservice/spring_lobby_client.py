@@ -194,10 +194,8 @@ class SpringLobbyClient(object):
 
             if localpart.startswith("_discord_"):
                 localpart = localpart.lstrip("_discord_")
-                domain = "discord"
             elif localpart.startswith("freenode_"):
                 localpart = localpart.lstrip("freenode_")
-                domain = "freenode.org"
             elif localpart.startswith("spring"):
                 localpart = localpart.lstrip("spring_")
 
