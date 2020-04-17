@@ -158,7 +158,6 @@ class Matrix:
 
 
 async def sappservice(config_filename, loop):
-
     config = Config(config_filename, None, None)
     config.load()
 

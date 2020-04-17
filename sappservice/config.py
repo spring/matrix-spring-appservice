@@ -21,7 +21,6 @@ from mautrix.bridge.config import (BaseBridgeConfig, ConfigUpdateHelper)
 
 from ruamel.yaml import YAML
 
-
 yaml = YAML()
 yaml.indent(4)
 yaml.width = 200
