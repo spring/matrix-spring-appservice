@@ -28,6 +28,7 @@ from asyncblink import signal as asignal
 from asyncspring.lobby import LobbyProtocol, LobbyProtocolWrapper, connections
 from mautrix.appservice import AppService
 from mautrix.client.api.types import PresenceState, Membership, Member, RoomID, UserID
+from mautrix.errors import MNotFound
 
 
 class SpringLobbyClient(object):
@@ -189,11 +190,12 @@ class SpringLobbyClient(object):
             self.log.debug(f"User {user}")
             user_localpart, user_domain = self.appserv.intent.parse_user_id(user)
 
-            # try:
-            member_data = await self.appserv.intent.get_profile(UserID(user))
-            user_displayname = member_data.displayname
-            # except Exception as e:
-            #    user_displayname = user_localpart
+            try:
+                member_data = await self.appserv.intent.get_profile(UserID(user))
+                user_displayname = member_data.displayname
+            except MNotFound as nf:
+                self.log.exception(f"user {user_localpart} has no profile {nf}")
+                user_displayname = user_localpart
 
             if len(user_displayname) > 15:
                 user_displayname = user_displayname[:15]
