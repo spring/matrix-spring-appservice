@@ -167,7 +167,7 @@ class SpringLobbyClient(object):
                     if mxid.startswith(f"@{bot_username}"):
                         continue
 
-                    if mxid.startswith(self.config["appservice.namespace"]):
+                    if mxid.startswith(f"@{self.config['appservice.namespace']}"):
                         self.log.debug(f"Ignoring local user")
                         continue
 
@@ -194,10 +194,10 @@ class SpringLobbyClient(object):
 
             if localpart.startswith("_discord_"):
                 localpart = localpart.lstrip("_discord_")
-                user_domain = "discord"
+                domain = "discord"
             elif localpart.startswith("freenode_"):
                 localpart = localpart.lstrip("freenode_")
-                user_domain = "freenode.org"
+                domain = "freenode.org"
             elif localpart.startswith("spring"):
                 localpart = localpart.lstrip("spring_")
 
