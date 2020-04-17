@@ -189,11 +189,11 @@ class SpringLobbyClient(object):
             self.log.debug(f"User {user}")
             user_localpart, user_domain = self.appserv.intent.parse_user_id(user)
 
-            try:
-                member_data = await self.appserv.intent.get_profile(UserID(user))
-                user_displayname = member_data.displayname
-            except Exception as e:
-                user_displayname = user_localpart
+            # try:
+            member_data = await self.appserv.intent.get_profile(UserID(user))
+            user_displayname = member_data.displayname
+            # except Exception as e:
+            #    user_displayname = user_localpart
 
             if len(user_displayname) > 15:
                 user_displayname = user_displayname[:15]

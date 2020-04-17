@@ -166,7 +166,7 @@ async def sappservice(config_filename, loop):
 
     log: logging.Logger = logging.getLogger("sappservice")
 
-    log.exception("TEST")
+    log.error("TEST")
 
     log.info("Initializing matrix spring lobby appservice")
     log.info(f"Config file: {config_filename}")
