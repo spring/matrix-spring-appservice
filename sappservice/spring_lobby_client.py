@@ -36,7 +36,7 @@ class SpringLobbyClient(object):
 
     def __init__(self, appserv, config, loop):
 
-        self.log = logging.getLogger("lobby")  # type: logging.Logger
+        self.log: logging.Logger = logging.getLogger("lobby")
 
         self.bot = None
         self.rooms = None

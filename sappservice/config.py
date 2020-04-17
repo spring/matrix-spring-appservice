@@ -82,6 +82,8 @@ class Config(BaseBridgeConfig):
         copy("bridge.alias_template")
         copy("bridge.rooms")
 
+        copy("logging")
+
     @property
     def namespaces(self) -> Dict[str, List[Dict[str, Any]]]:
         homeserver = self["homeserver.domain"]

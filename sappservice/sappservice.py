@@ -91,11 +91,11 @@ class Matrix:
         domain = self.config['homeserver.domain']
         namespace = self.config['appservice.namespace']
 
-        event_type = event.get("type", "m.unknown")  # type: str
-        room_id = event.get("room_id", None)  # type: Optional[RoomID]
-        event_id = event.get("event_id", None)  # type: Optional[EventID]
-        sender = event.get("sender", None)  # type: Optional[UserID]
-        content = event.get("content", {})  # type: Dict
+        event_type: str = event.get("type", "m.unknown")
+        room_id: Optional[RoomID] = event.get("room_id", None)
+        event_id: Optional[EventID] = event.get("event_id", None)
+        sender: Optional[UserID] = event.get("sender", None)
+        content: Dict = event.get("content", {})
 
         self.log.debug(f"Event {event}")
 
@@ -164,7 +164,9 @@ async def sappservice(config_filename, loop):
 
     logging.config.dictConfig(copy.deepcopy(config["logging"]))
 
-    log = logging.getLogger("sappservice")  # type: logging.Logger
+    log: logging.Logger = logging.getLogger("sappservice")
+
+    log.exception("TEST")
 
     log.info("Initializing matrix spring lobby appservice")
     log.info(f"Config file: {config_filename}")
@@ -192,7 +194,6 @@ async def sappservice(config_filename, loop):
     client_name = config['spring.client_name']
     rooms = config["bridge.rooms"]
 
-
     appserv = AppService(server=server,
                          domain=domain,
                          verify_ssl=verify_ssl,
@@ -202,12 +203,10 @@ async def sappservice(config_filename, loop):
 
                          bot_localpart=bot_localpart,
 
-                         log=log,
                          loop=loop,
 
                          real_user_content_key="org.jauriarts.appservice.puppet",
                          aiohttp_params={"client_max_size": max_body_size * mebibyte})
-
 
     spring_lobby_client = SpringLobbyClient(appserv, config, loop=loop)
 
@@ -220,13 +219,13 @@ async def sappservice(config_filename, loop):
     #
     ################
 
-    # @spring_lobby_client.bot.on("clients")
-    # async def on_lobby_clients(message):
-    #     log.debug(f"on_lobby_clients {message}")
-    #     if message.client.name != client_name:
-    #         channel = message.params[0]
-    #         clients = message.params[1:]
-    #         await spring_lobby_client.join_matrix_room(channel, clients)
+    @spring_lobby_client.bot.on("clients")
+    async def on_lobby_clients(message):
+        log.debug(f"on_lobby_clients {message}")
+        if message.client.name != client_name:
+            channel = message.params[0]
+            clients = message.params[1:]
+            await spring_lobby_client.join_matrix_room(channel, clients)
 
     @spring_lobby_client.bot.on("joined")
     async def on_lobby_joined(message, user, channel):
@@ -343,9 +342,8 @@ def main():
 
     config_filename = args.config
     if config_filename is None:
-        print("""sappservice\n
-ussage: sappservice -c config.yaml
-""")
+        print("""Matrix Spring Appservice
+Ussage: sappservice -c config.yaml""")
         sys.exit(1)
 
     loop = asyncio.get_event_loop()  # type: asyncio.AbstractEventLoop
