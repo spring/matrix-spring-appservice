@@ -143,7 +143,6 @@ class SpringLobbyClient(object):
 
     async def sync_matrix_users(self) -> None:
         self.log.debug("Sync matrix users")
-
         self.log.debug("Sync StateStore")
 
         bot_username = self.config["appservice.bot_username"]
@@ -171,10 +170,6 @@ class SpringLobbyClient(object):
                     if mxid.startswith(self.config["appservice.namespace"]):
                         self.log.debug(f"Ignoring local user")
                         continue
-                    elif mxid.startswith("_discord_"):
-                        mxid = mxid.lstrip("_discord_")
-                    elif mxid.startswith("freenode_"):
-                        mxid = mxid.lstrip("freenode_")
 
                     # self.log.debug(f"StateStore: set member room_id {room_id} mxid {mxid} member {member}")
                     self.appserv.state_store.set_member(room_id, mxid, member)
@@ -188,30 +183,38 @@ class SpringLobbyClient(object):
 
         for user in matrix_users:
             self.log.debug(f"User {user}")
-            user_localpart, user_domain = self.appserv.intent.parse_user_id(user)
+            localpart, domain = self.appserv.intent.parse_user_id(user)
 
             try:
-                member_data = await self.appserv.intent.get_profile(UserID(user))
-                user_displayname = member_data.displayname
+                profile = await self.appserv.intent.get_profile(UserID(user))
+                displayname = profile.displayname
             except MNotFound as nf:
-                self.log.exception(f"user {user_localpart} has no profile {nf}")
-                user_displayname = user_localpart
+                self.log.error(f"user {localpart} has no profile {nf}")
+                displayname = localpart
 
-            if len(user_displayname) > 15:
-                user_displayname = user_displayname[:15]
-            if len(user_localpart) > 15:
-                user_localpart = user_localpart[:15]
-            if len(user_domain) > 15:
-                user_domain = user_domain[:15]
+            if localpart.startswith("_discord_"):
+                localpart = localpart.lstrip("_discord_")
+                user_domain = "discord"
+            elif localpart.startswith("freenode_"):
+                localpart = localpart.lstrip("freenode_")
+                user_domain = "freenode.org"
+            elif localpart.startswith("spring"):
+                localpart = localpart.lstrip("spring_")
 
-            self.log.debug(f"Bridging user {user} for {user_domain} externalID {user_localpart} externalUsername {user_displayname}")
+            if len(displayname) > 15:
+                displayname = displayname[:15]
+            if len(localpart) > 15:
+                localpart = localpart[:15]
+            if len(domain) > 15:
+                domain = domain[:15]
+
+            self.log.debug(f"Bridging user {user} for {domain} externalID {localpart} externalUsername {displayname}")
             await asyncio.sleep(0.1)
-            self.bot.bridged_client_from(location=user_domain,
-                                         external_id=user_localpart,
-                                         external_username=user_displayname)
+            self.bot.bridged_client_from(location=domain,
+                                         external_id=localpart,
+                                         external_username=displayname)
 
         self.log.debug("Users bridged")
-
         self.log.debug("Join matrix users")
 
         for room_id, members in self.appserv.state_store.members.items():
@@ -223,47 +226,47 @@ class SpringLobbyClient(object):
             for member in members:
                 self.log.debug(f"\tMember: {member}")
 
-                user_localpart, user_domain = self.appserv.intent.parse_user_id(member)
+                localpart, domain = self.appserv.intent.parse_user_id(member)
 
-                if user_localpart == self.config["appservice.bot_username"]:
+                if localpart == self.config["appservice.bot_username"]:
                     self.log.debug(f"Not bridging the local appservice")
                     continue
-                elif user_localpart == "_discord_bot":
+                elif localpart == "_discord_bot":
                     self.log.debug(f"Not bridging the discord appservice")
                     continue
 
-                if user_localpart.startswith(self.config["appservice.namespace"]):
-                    self.log.debug(f"Ignoring local user {user_localpart}")
+                if localpart.startswith(self.config["appservice.namespace"]):
+                    self.log.debug(f"Ignoring local user {localpart}")
                     continue
-                elif user_localpart.startswith("_discord_"):
-                    user_localpart = user_localpart.lstrip("_discord_")
+                elif localpart.startswith("_discord_"):
+                    localpart = localpart.lstrip("_discord_")
                     user_domain = "discord"
-                elif user_localpart.startswith("freenode_"):
-                    user_localpart = user_localpart.lstrip("freenode_")
+                elif localpart.startswith("freenode_"):
+                    localpart = localpart.lstrip("freenode_")
                     user_domain = "freenode.org"
-                elif user_localpart.startswith("spring"):
-                    user_localpart = user_localpart.lstrip("spring_")
+                elif localpart.startswith("spring"):
+                    localpart = localpart.lstrip("spring_")
                 try:
-                    member_data = await self.appserv.intent.get_profile(UserID(member))
-                    user_displayname = member_data.displayname
+                    data = await self.appserv.intent.get_profile(UserID(member))
+                    displayname = data.displayname
                 except Exception as e:
-                    user_displayname = user_localpart
+                    displayname = localpart
 
-                if len(user_displayname) > 15:
-                    user_displayname = user_displayname[:15]
-                if len(user_localpart) > 15:
-                    user_localpart = user_localpart[:15]
-                if len(user_domain) > 15:
-                    user_domain = user_domain[:15]
+                if len(displayname) > 15:
+                    displayname = displayname[:15]
+                if len(localpart) > 15:
+                    localpart = localpart[:15]
+                if len(domain) > 15:
+                    domain = domain[:15]
 
-                self.log.debug(f"user_name = {user_localpart}")
-                self.log.debug(f"display_name = {user_displayname}")
-                self.log.debug(f"domain = {user_domain}")
+                self.log.debug(f"user_name = {localpart}")
+                self.log.debug(f"display_name = {displayname}")
+                self.log.debug(f"domain = {domain}")
 
                 for _, room in self.rooms.items():
                     if room["room_id"] == room_id:
-                        self.log.debug(f"Join channel {room.get('name')}, user {user_localpart}, domain {user_domain}")
-                        self.bot.join_from(room["name"], user_domain, user_localpart)
+                        self.log.debug(f"Join channel {room.get('name')}, user {localpart}, domain {domain}")
+                        self.bot.join_from(room["name"], domain, localpart)
 
     async def join_matrix_room(self, room, clients):
 
