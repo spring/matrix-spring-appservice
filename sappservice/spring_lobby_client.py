@@ -194,10 +194,13 @@ class SpringLobbyClient(object):
 
             if localpart.startswith("_discord_"):
                 localpart = localpart.lstrip("_discord_")
+                domain = "discord"
             elif localpart.startswith("freenode_"):
                 localpart = localpart.lstrip("freenode_")
+                domain = "freenode.org"
             elif localpart.startswith("spring"):
                 localpart = localpart.lstrip("spring_")
+                domain = "springlobby"
 
             if len(displayname) > 15:
                 displayname = displayname[:15]
@@ -244,6 +247,7 @@ class SpringLobbyClient(object):
                     user_domain = "freenode.org"
                 elif localpart.startswith("spring"):
                     localpart = localpart.lstrip("spring_")
+                    user_domain = "springlobby"
                 try:
                     data = await self.appserv.intent.get_profile(UserID(member))
                     displayname = data.displayname
@@ -254,17 +258,17 @@ class SpringLobbyClient(object):
                     displayname = displayname[:15]
                 if len(localpart) > 15:
                     localpart = localpart[:15]
-                if len(domain) > 15:
-                    domain = domain[:15]
+                if len(user_domain) > 15:
+                    user_domain = domain[:15]
 
                 self.log.debug(f"user_name = {localpart}")
                 self.log.debug(f"display_name = {displayname}")
-                self.log.debug(f"domain = {domain}")
+                self.log.debug(f"domain = {user_domain}")
 
                 for _, room in self.rooms.items():
                     if room["room_id"] == room_id:
-                        self.log.debug(f"Join channel {room.get('name')}, user {localpart}, domain {domain}")
-                        self.bot.join_from(room["name"], domain, localpart)
+                        self.log.debug(f"Join channel {room.get('name')}, user {localpart}, domain {user_domain}")
+                        self.bot.join_from(room["name"], user_domain, localpart)
 
     async def join_matrix_room(self, room, clients):
 
