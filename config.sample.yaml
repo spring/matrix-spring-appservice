@@ -1,0 +1,84 @@
+homeserver:
+  address: https://example.com
+  domain: example.com
+  verify_ssl: 1
+
+spring:
+  address: example.com
+  port: 8200
+  ssl: False
+  bot_username: appservice
+  bot_password: password
+  client_name: "AppService 0.4"
+  client_flags: "sp b u"
+
+appservice:
+  as_token: appservice_token
+  hs_token: homeserver_token
+  bot_username: appservice
+  namespace: example
+  max_body_size: 1
+  address: http://localhost:8080
+  hostname: 127.0.0.1
+  port: 8080
+
+  bridge:
+    test:
+      room_id: "!jFTGplyLkukmzRQfkz:matrix.org"
+      enabled: 'True'
+#
+#    sy:
+#      room_id: "!QnNgrBOChCJVVqWWjY:matrix.org"
+#      enabled: 'True'
+#
+#    springlobby:
+#      room_id: "!xIAWDQuQEDFzSllXML:springrts.com"
+#      enabled: 'True'
+#
+#    s44:
+#      room_id: "!EoIGLmjIYqPSFLNWVn:matrix.org"
+#      enabled: 'True'
+#
+#    chobby:
+#      room_id: "!xfGxczxAywmNfAdXIk:springrts.com"
+#      enabled: 'True'
+#
+#    mapping:
+#      room_id: "!cnxlPotDhFgdBaswag:matrix.org"
+#      enabled: 'True'
+#
+#    gamedev:
+#      room_id: "!DpMgMbnDzOvUIXvoTX:jauriarts.org"
+#      enabled: 'True'
+
+# Python logging configuration.
+#
+# See section 16.7.2 of the Python documentation for more info:
+# https://docs.python.org/3.6/library/logging.config.html#configuration-dictionary-schema
+logging:
+    version: 1
+    formatters:
+        precise:
+            format: "[%(asctime)s] [%(levelname)s@%(name)s] %(message)s"
+    handlers:
+        file:
+            class: logging.handlers.RotatingFileHandler
+            formatter: precise
+            filename: ./matrix-spring.log
+            maxBytes: 10485760
+            backupCount: 10
+        console:
+            class: logging.StreamHandler
+            formatter: precise
+    loggers:
+        matrix-spring:
+            level: DEBUG
+        spring_as:
+            level: DEBUG
+        asyncspring:
+            level: DEBUG
+
+    root:
+        level: DEBUG
+        handlers: [file, console]
+
