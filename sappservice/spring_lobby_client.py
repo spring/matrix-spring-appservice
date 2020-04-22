@@ -227,7 +227,7 @@ class SpringLobbyClient(object):
             for member in members:
                 self.log.debug(f"\tMember: {member}")
 
-                localpart, domain = self.appserv.intent.parse_user_id(member)
+                localpart, user_domain = self.appserv.intent.parse_user_id(member)
 
                 if localpart == self.config["appservice.bot_username"]:
                     self.log.debug(f"Not bridging the local appservice")
@@ -259,7 +259,7 @@ class SpringLobbyClient(object):
                 if len(localpart) > 15:
                     localpart = localpart[:15]
                 if len(user_domain) > 15:
-                    user_domain = domain[:15]
+                    user_domain = user_domain[:15]
 
                 self.log.debug(f"user_name = {localpart}")
                 self.log.debug(f"display_name = {displayname}")
