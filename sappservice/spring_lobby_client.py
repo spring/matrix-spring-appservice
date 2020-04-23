@@ -213,6 +213,9 @@ class SpringLobbyClient(object):
             if len(domain) > 15:
                 domain = domain[:15]
 
+            if '-' in domain:
+                domain = domain.replace('-', '_')
+
             displayname = re.sub('[^A-Za-z0-9]+', '', displayname)
 
             self.log.debug(f"Bridging user {user} for {domain} externalID {localpart} externalUsername {displayname}")
