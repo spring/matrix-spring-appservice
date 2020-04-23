@@ -212,7 +212,9 @@ class SpringLobbyClient(object):
                 localpart = localpart[:15]
             if len(domain) > 15:
                 domain = domain[:15]
-            displayname = re.sub('[^A-Za-z0-9]+', '', displayname)
+            
+            re.sub('[^A-Za-z0-9]+', '', displayname)
+
             self.log.debug(f"Bridging user {user} for {domain} externalID {localpart} externalUsername {displayname}")
             self.bot.bridged_client_from(location=domain,
                                          external_id=localpart,
