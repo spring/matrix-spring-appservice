@@ -213,8 +213,7 @@ class SpringLobbyClient(object):
             if len(domain) > 15:
                 domain = domain[:15]
 
-            if '-' in domain:
-                domain = domain.replace('-', '_')
+            domain = domain.replace('-', '_')
 
             displayname = re.sub('[^A-Za-z0-9]+', '', displayname)
 
@@ -259,7 +258,8 @@ class SpringLobbyClient(object):
                 try:
                     data = await self.appserv.intent.get_profile(UserID(member))
                     displayname = data.displayname
-                except Exception as e:
+                except MNotFound as nf:
+                    self.log.error(f"user {localpart} has no profile {nf}")
                     displayname = localpart
 
                 if len(displayname) > 15:
