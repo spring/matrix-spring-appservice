@@ -185,6 +185,9 @@ class SpringLobbyClient(object):
             self.log.debug(f"User {user}")
             localpart, domain = self.appserv.intent.parse_user_id(user)
 
+            if localpart == "_discord_bot_":
+                continue
+
             try:
                 profile = await self.appserv.intent.get_profile(UserID(user))
                 displayname = profile.displayname
