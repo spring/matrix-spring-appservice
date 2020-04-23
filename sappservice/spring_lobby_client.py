@@ -190,8 +190,7 @@ class SpringLobbyClient(object):
                 continue
 
             try:
-                profile = await self.appserv.intent.get_profile(UserID(user))
-                displayname = profile.displayname
+                displayname = await self.appserv.intent.get_displayname(UserID(user))
             except MNotFound as nf:
                 self.log.error(f"user {localpart} has no profile {nf}")
                 displayname = localpart
