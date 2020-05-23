@@ -464,10 +464,10 @@ class SpringLobbyClient(object):
         # loop.stop()
         sys.exit(0)
 
-    def login(self, bot_username, bot_password, client_flags):
+    def login(self):
         for channel in self.rooms:
             self.bot.channels_to_join.append(channel)
-        self.bot.login(bot_username, bot_password, client_flags)
+        self.bot.login(self.bot_username, self.bot_password, self.client_flags)
 
     async def connect(self, server, port=8200, use_ssl=False, name=None, flags=None):
         """
