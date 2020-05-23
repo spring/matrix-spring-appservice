@@ -47,6 +47,13 @@ class SpringLobbyClient(object):
         self.presence_timmer = None
         self.bot_username = self.config["spring.bot_username"]
         self.bot_password = self.config["spring.bot_password"]
+        self.client_flags = self.config["spring.client_flags"]
+        self.server = self.config["spring.address"]
+        self.port = self.config["spring.port"]
+        self.use_ssl = self.config["spring.ssl"]
+        self.client_name = self.config["spring.client_name"]
+        self.client_flags = self.config["spring.client_flags"]
+        self.rooms = self.config["bridge.rooms"]
 
         self.loop = loop
 
@@ -54,19 +61,22 @@ class SpringLobbyClient(object):
 
         self.log.info("Starting Spring lobby client")
 
-        bot_username = self.config["spring.bot_username"]
-        bot_password = self.config["spring.bot_password"]
-        client_flags = self.config["spring.client_flags"]
+        bot_username = self.bot_username
+        bot_password = self.bot_password
+
+        server = self.server
+        port = self.port
+        use_ssl = self.use_ssl
+        client_name = self.client_name
+        client_flags = self.client_flags
 
         await self.appserv.intent.set_presence(PresenceState.ONLINE)
 
-        self.bot = await self.connect(server=self.config["spring.address"],
-                                      port=self.config["spring.port"],
-                                      use_ssl=self.config["spring.ssl"],
-                                      name=self.config["spring.client_name"],
-                                      flags=self.config["spring.client_flags"])
-
-        self.rooms = self.config["bridge.rooms"]
+        self.bot = await self.connect(server=server,
+                                      port=port,
+                                      use_ssl=use_ssl,
+                                      name=client_name,
+                                      flags=client_flags)
 
         self.log.debug("### CONFIG ROOMS ###")
 
