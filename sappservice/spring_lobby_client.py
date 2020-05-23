@@ -39,14 +39,14 @@ class SpringLobbyClient(object):
 
         self.log: logging.Logger = logging.getLogger("lobby")
 
+        self.config = config
+
         self.bot = None
         self.rooms = None
         self.appserv = appserv
         self.presence_timmer = None
-        self.bot_username = None
-        self.bot_password = None
-
-        self.config = config
+        self.bot_username = self.config["spring.bot_username"]
+        self.bot_password = self.config["spring.bot_password"]
 
         self.loop = loop
 
