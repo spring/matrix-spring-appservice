@@ -21,7 +21,6 @@
 import asyncio
 import logging
 import sys
-from pprint import pprint
 
 import re
 from asyncblink import signal as asignal
@@ -55,6 +54,10 @@ class SpringLobbyClient(object):
 
         self.log.info("Starting Spring lobby client")
 
+        bot_username = self.config["spring.bot_username"]
+        bot_password = self.config["spring.bot_password"]
+        client_flags = self.config["spring.client_flags"]
+
         await self.appserv.intent.set_presence(PresenceState.ONLINE)
 
         self.bot = await self.connect(server=self.config["spring.address"],
@@ -77,10 +80,7 @@ class SpringLobbyClient(object):
                 self.bot.channels_to_join.append(channel)
                 await self.appserv.intent.join_room(room_id[0])
 
-        bot_username = self.config["spring.bot_username"]
-        bot_password = self.config["spring.bot_password"]
-
-        self.bot.login(bot_username, bot_password)
+        self.bot.login(bot_username, bot_password, client_flags)
 
     async def _presence_timer(self, user):
         self.log.debug(f"SET presence timmer for user : {user}")
@@ -454,10 +454,10 @@ class SpringLobbyClient(object):
         # loop.stop()
         sys.exit(0)
 
-    def login(self, args=None):
+    def login(self, bot_username, bot_password, client_flags):
         for channel in self.rooms:
             self.bot.channels_to_join.append(channel)
-        self.bot.login(self.config["spring.bot_username"], self.config["spring.bot_password"])
+        self.bot.login(bot_username, bot_password, client_flags)
 
     async def connect(self, server, port=8200, use_ssl=False, name=None, flags=None):
         """
