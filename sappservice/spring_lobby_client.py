@@ -27,7 +27,7 @@ from asyncblink import signal as asignal
 
 from asyncspring.lobby import LobbyProtocol, LobbyProtocolWrapper, connections
 from mautrix.appservice import AppService
-from mautrix.client.api.types import PresenceState, Membership, Member, RoomID, UserID
+from mautrix.types import PresenceState, Membership, Member, RoomID, UserID
 from mautrix.errors import MNotFound
 
 
