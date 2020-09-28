@@ -301,6 +301,7 @@ async def sappservice(config_filename, loop):
     @spring_lobby_client.bot.on("accepted")
     async def on_lobby_accepted(message):
         log.debug(f"message Accepted {message}")
+        await spring_lobby_client.config_rooms()
         await spring_lobby_client.sync_matrix_users()
 
     @spring_lobby_client.bot.on("failed")

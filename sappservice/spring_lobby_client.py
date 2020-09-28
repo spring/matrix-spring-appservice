@@ -73,6 +73,8 @@ class SpringLobbyClient(object):
                                       use_ssl=use_ssl,
                                       name=client_name)
 
+    async def config_rooms(self):
+
         self.log.debug("### CONFIG ROOMS ###")
 
         for room_name, room_data in self.rooms.items():
