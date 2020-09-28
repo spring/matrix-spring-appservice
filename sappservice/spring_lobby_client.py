@@ -28,7 +28,7 @@ from asyncblink import signal as asignal
 from asyncspring.lobby import LobbyProtocol, LobbyProtocolWrapper, connections
 from mautrix.appservice import AppService
 from mautrix.client.api.types import PresenceState, Membership, Member, RoomID, UserID
-from mautrix.errors import MNotFound
+from mautrix.errors import MNotFound, MUnknown
 
 
 class SpringLobbyClient(object):
@@ -52,8 +52,8 @@ class SpringLobbyClient(object):
         self.port = self.config["spring.port"]
         self.use_ssl = self.config["spring.ssl"]
         self.client_name = self.config["spring.client_name"]
-        self.client_flags = self.config["spring.client_flags"]
         self.rooms = self.config["bridge.rooms"]
+        self.enabled_rooms = list()
 
         self.loop = loop
 
@@ -61,22 +61,17 @@ class SpringLobbyClient(object):
 
         self.log.info("Starting Spring lobby client")
 
-        bot_username = self.bot_username
-        bot_password = self.bot_password
-
         server = self.server
         port = self.port
         use_ssl = self.use_ssl
         client_name = self.client_name
-        client_flags = self.client_flags
 
         await self.appserv.intent.set_presence(PresenceState.ONLINE)
 
         self.bot = await self.connect(server=server,
                                       port=port,
                                       use_ssl=use_ssl,
-                                      name=client_name,
-                                      flags=client_flags)
+                                      name=client_name)
 
         self.log.debug("### CONFIG ROOMS ###")
 
@@ -86,11 +81,16 @@ class SpringLobbyClient(object):
             room_enabled = room_data["enabled"]
 
             self.log.info(f"{room_enabled} channel : {channel} room_name : {room_name} room_id : {room_id}")
-            if room_enabled:
+            if room_enabled is True:
                 self.bot.channels_to_join.append(channel)
                 await self.appserv.intent.join_room(room_id[0])
-
-        self.bot.login(bot_username, bot_password, client_flags)
+                self.enabled_rooms.append(room_id[0])
+            else:
+                try:
+                    await self.appserv.intent.leave_room(room_id[0])
+                    self.log.debug("Appservice leaves this room")
+                except MUnknown as mu:
+                    self.log.debug("Appservice not in this room")
 
     async def _presence_timer(self, user):
         self.log.debug(f"SET presence timmer for user : {user}")
@@ -236,56 +236,58 @@ class SpringLobbyClient(object):
 
         for room_id, members in self.appserv.state_store.members.items():
 
-            await self.appserv.intent.ensure_joined(room_id=room_id)
+            if room_id in self.enabled_rooms:
 
-            self.log.debug(f"RoomID: {room_id}")
+                await self.appserv.intent.ensure_joined(room_id=room_id)
 
-            for member in members:
-                self.log.debug(f"\tMember: {member}")
+                self.log.debug(f"RoomID: {room_id}")
 
-                localpart, user_domain = self.appserv.intent.parse_user_id(member)
+                for member in members:
+                    self.log.debug(f"\tMember: {member}")
 
-                if localpart == self.config["appservice.bot_username"]:
-                    self.log.debug(f"Not bridging the local appservice")
-                    continue
-                elif localpart == "_discord_bot":
-                    self.log.debug(f"Not bridging the discord appservice")
-                    continue
+                    localpart, user_domain = self.appserv.intent.parse_user_id(member)
 
-                if localpart.startswith(self.config["appservice.namespace"]):
-                    self.log.debug(f"Ignoring local user {localpart}")
-                    continue
-                elif localpart.startswith("_discord_"):
-                    localpart = localpart.lstrip("_discord_")
-                    user_domain = "discord"
-                elif localpart.startswith("freenode_"):
-                    localpart = localpart.lstrip("freenode_")
-                    user_domain = "freenode.org"
-                elif localpart.startswith("spring"):
-                    localpart = localpart.lstrip("spring_")
-                    user_domain = "springlobby"
-                try:
-                    data = await self.appserv.intent.get_profile(UserID(member))
-                    displayname = data.displayname
-                except MNotFound as nf:
-                    self.log.error(f"user {localpart} has no profile {nf}")
-                    displayname = localpart
+                    if localpart == self.config["appservice.bot_username"]:
+                        self.log.debug(f"Not bridging the local appservice")
+                        continue
+                    elif localpart == "_discord_bot":
+                        self.log.debug(f"Not bridging the discord appservice")
+                        continue
 
-                if len(displayname) > 15:
-                    displayname = displayname[:15]
-                if len(localpart) > 15:
-                    localpart = localpart[:15]
-                if len(user_domain) > 15:
-                    user_domain = user_domain[:15]
+                    if localpart.startswith(self.config["appservice.namespace"]):
+                        self.log.debug(f"Ignoring local user {localpart}")
+                        continue
+                    elif localpart.startswith("_discord_"):
+                        localpart = localpart.lstrip("_discord_")
+                        user_domain = "discord"
+                    elif localpart.startswith("freenode_"):
+                        localpart = localpart.lstrip("freenode_")
+                        user_domain = "freenode.org"
+                    elif localpart.startswith("spring"):
+                        localpart = localpart.lstrip("spring_")
+                        user_domain = "springlobby"
+                    try:
+                        data = await self.appserv.intent.get_profile(UserID(member))
+                        displayname = data.displayname
+                    except MNotFound as nf:
+                        self.log.error(f"user {localpart} has no profile {nf}")
+                        displayname = localpart
 
-                self.log.debug(f"user_name = {localpart}")
-                self.log.debug(f"display_name = {displayname}")
-                self.log.debug(f"domain = {user_domain}")
+                    if len(displayname) > 15:
+                        displayname = displayname[:15]
+                    if len(localpart) > 15:
+                        localpart = localpart[:15]
+                    if len(user_domain) > 15:
+                        user_domain = user_domain[:15]
 
-                for _, room in self.rooms.items():
-                    if room["room_id"] == room_id:
-                        self.log.debug(f"Join channel {room.get('name')}, user {localpart}, domain {user_domain}")
-                        self.bot.join_from(room["name"], user_domain, localpart)
+                    self.log.debug(f"user_name = {localpart}")
+                    self.log.debug(f"display_name = {displayname}")
+                    self.log.debug(f"domain = {user_domain}")
+
+                    for _, room in self.rooms.items():
+                        if room["room_id"] == room_id:
+                            self.log.debug(f"Join channel {room.get('name')}, user {localpart}, domain {user_domain}")
+                            self.bot.join_from(room["name"], user_domain, localpart)
 
     async def join_matrix_room(self, room, clients):
 
@@ -467,7 +469,6 @@ class SpringLobbyClient(object):
     def login(self):
         for channel in self.rooms:
             self.bot.channels_to_join.append(channel)
-        self.bot.login(self.bot_username, self.bot_password, self.client_flags)
 
     async def connect(self, server, port=8200, use_ssl=False, name=None, flags=None):
         """
@@ -476,7 +477,11 @@ class SpringLobbyClient(object):
         protocol = None
         while protocol is None:
             try:
-                transport, protocol = await self.loop.create_connection(LobbyProtocol,
+                transport, protocol = await self.loop.create_connection(lambda: LobbyProtocol(self.bot_username,
+                                                                                              self.bot_password,
+                                                                                              self.client_name,
+                                                                                              self.client_flags
+                                                                                              ),
                                                                         host=server,
                                                                         port=port,
                                                                         ssl=use_ssl)

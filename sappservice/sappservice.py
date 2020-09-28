@@ -19,11 +19,12 @@
 #   You should have received a copy of the GNU General Public License
 #   along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+import sys
 import argparse
 import asyncio
 import logging.config
 import signal
-import sys
+import traceback
 
 from typing import Optional, Dict
 from urllib.parse import urlparse
@@ -55,6 +56,7 @@ class Matrix:
         self.az = az
         self.sl = sl
         self.config = config
+
 
     async def handle_message(self, room_id: RoomID, user_id: UserID, message: MessageEventContent,
                              event_id: EventID) -> None:
@@ -168,6 +170,12 @@ async def sappservice(config_filename, loop):
     log.info("Initializing matrix spring lobby appservice")
     log.info(f"Config file: {config_filename}")
 
+    def exception_hook(etype, value, trace):
+        log.debug(traceback.format_exception(etype, value, trace))
+
+    sys.excepthook = exception_hook
+
+
     ################
     #
     # Initialization
@@ -215,6 +223,13 @@ async def sappservice(config_filename, loop):
     # Lobby events
     #
     ################
+
+    @spring_lobby_client.bot.on("tasserver")
+    async def on_lobby_tasserver(message):
+        log.debug(f"on_lobby_tasserver {message}")
+        if message.client.name == client_name:
+            message.client._login()
+
 
     @spring_lobby_client.bot.on("clients")
     async def on_lobby_clients(message):
@@ -291,6 +306,7 @@ async def sappservice(config_filename, loop):
     @spring_lobby_client.bot.on("failed")
     async def on_lobby_failed(message):
         log.debug(f"message FAILED {message}")
+
 
     matrix = Matrix(appserv, spring_lobby_client, config)
 
