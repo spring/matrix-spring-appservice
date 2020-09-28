@@ -73,8 +73,14 @@ class SpringLobbyClient(object):
                                       use_ssl=use_ssl,
                                       name=client_name)
 
-        for channel in self.rooms:
-            self.bot.channels_to_join.append(channel)
+        self.log.debug("### Channels to join ###")
+        for room_name, room_data in self.rooms.items():
+            if room_data['enabled'] is True:
+                self.log.debug(f"Join {room_name}")
+                self.bot.channels_to_join.append(room_name)
+            else:
+                self.log.debug(f"Not join {room_name}")
+
 
     async def config_rooms(self):
 
