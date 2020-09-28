@@ -73,6 +73,9 @@ class SpringLobbyClient(object):
                                       use_ssl=use_ssl,
                                       name=client_name)
 
+        for channel in self.rooms:
+            self.bot.channels_to_join.append(channel)
+
     async def config_rooms(self):
 
         self.log.debug("### CONFIG ROOMS ###")
@@ -93,6 +96,7 @@ class SpringLobbyClient(object):
                     self.log.debug("Appservice leaves this room")
                 except MUnknown as mu:
                     self.log.debug("Appservice not in this room")
+
 
     async def _presence_timer(self, user):
         self.log.debug(f"SET presence timmer for user : {user}")
@@ -469,8 +473,7 @@ class SpringLobbyClient(object):
         sys.exit(0)
 
     def login(self):
-        for channel in self.rooms:
-            self.bot.channels_to_join.append(channel)
+        pass
 
     async def connect(self, server, port=8200, use_ssl=False, name=None, flags=None):
         """
