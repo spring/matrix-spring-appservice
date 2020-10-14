@@ -61,8 +61,10 @@ target/
 
 venv/
 
-sappservice/config.yaml
+config.yaml
 
 state_store\.json
 
 venv36/
+
+mx-state.json

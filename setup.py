@@ -41,6 +41,6 @@ setuptools.setup(
     ],
     entry_points="""
         [console_scripts]
-        sappservice=sappservice.sappservice:main
+        sappservice=sappservice.__main__:main
     """,
 )

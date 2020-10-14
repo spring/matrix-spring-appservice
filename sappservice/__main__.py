@@ -355,8 +355,10 @@ def main():
 
     config_filename = args.config
     if config_filename is None:
-        print("""Matrix Spring Appservice
-Ussage: sappservice -c config.yaml""")
+        print("""
+                Matrix Spring Appservice    
+                Ussage: sappservice -c config.yaml
+                """)
         sys.exit(1)
 
     loop = asyncio.get_event_loop()  # type: asyncio.AbstractEventLoop
