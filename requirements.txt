@@ -1,5 +1,4 @@
 commonmark
-mautrix-python
 mautrix-appservice
 matrix_client
 sqlalchemy
