@@ -27,8 +27,8 @@ from asyncblink import signal as asignal
 
 from asyncspring.lobby import LobbyProtocol, LobbyProtocolWrapper, connections
 from mautrix.appservice import AppService
-from mautrix.client.api.types import PresenceState, Membership, Member, RoomID, UserID
 from mautrix.errors import MNotFound, MUnknown
+from mautrix.types import PresenceState, UserID, RoomID, Member, Membership
 
 
 class SpringLobbyClient(object):
@@ -195,7 +195,7 @@ class SpringLobbyClient(object):
                         continue
 
                     # self.log.debug(f"StateStore: set member room_id {room_id} mxid {mxid} member {member}")
-                    self.appserv.state_store.set_member(room_id, mxid, member)
+                    await self.appserv.state_store.set_member(room_id, mxid, member)
             else:
                 self.log.debug(f"Room {spring_room} disabled")
 
