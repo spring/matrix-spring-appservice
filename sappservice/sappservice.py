@@ -32,10 +32,9 @@ from urllib.parse import urlparse
 import copy
 
 from mautrix.bridge import BaseBridgeConfig
-from mautrix.client.api.types import PresenceState
 from mautrix.errors import MForbidden
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
-                           MessageEventContent, StateEvent, Membership, MemberStateEventContent)
+                           MessageEventContent, StateEvent, Membership, MemberStateEventContent, PresenceState)
 from mautrix.appservice import AppService
 
 from sappservice.config import Config
