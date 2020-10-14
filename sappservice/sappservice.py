@@ -207,7 +207,7 @@ async def sappservice(config_filename, loop):
                          hs_token=hs_token,
 
                          bot_localpart=bot_localpart,
-
+                         id="appservice",
                          loop=loop,
 
                          real_user_content_key="org.jauriarts.appservice.puppet",

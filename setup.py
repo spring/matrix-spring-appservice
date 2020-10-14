@@ -15,7 +15,8 @@ setuptools.setup(
 
     install_requires=[
         "commonmark",
-        "mautrix",
+        "mautrix-python",
+        "mautrix-appservice",
         "matrix_client",
         "sqlalchemy",
         "asyncblink",
