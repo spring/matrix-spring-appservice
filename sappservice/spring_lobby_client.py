@@ -23,6 +23,7 @@ import logging
 import sys
 
 import re
+
 from asyncblink import signal as asignal
 
 from asyncspring.lobby import LobbyProtocol, LobbyProtocolWrapper, connections
@@ -42,7 +43,6 @@ class SpringLobbyClient(object):
         self.config = config
 
         self.bot = None
-        self.rooms = None
         self.appserv = appserv
         self.presence_timmer = None
         self.bot_username = self.config["spring.bot_username"]
@@ -81,7 +81,6 @@ class SpringLobbyClient(object):
             else:
                 self.log.debug(f"Not join {room_name}")
 
-
     async def config_rooms(self):
 
         self.log.debug("### CONFIG ROOMS ###")
@@ -102,7 +101,6 @@ class SpringLobbyClient(object):
                     self.log.debug("Appservice leaves this room")
                 except MUnknown as mu:
                     self.log.debug("Appservice not in this room")
-
 
     async def _presence_timer(self, user):
         self.log.debug(f"SET presence timmer for user : {user}")
@@ -166,7 +164,6 @@ class SpringLobbyClient(object):
 
     async def sync_matrix_users(self) -> None:
         self.log.debug("Sync matrix users")
-        self.log.debug("Sync StateStore")
 
         bot_username = self.config["appservice.bot_username"]
 
@@ -178,14 +175,14 @@ class SpringLobbyClient(object):
             if enabled:
                 self.log.debug(f"Room {spring_room} enabled")
                 await self.appserv.intent.ensure_joined(room_id=room_id)
-                resp = await self.appserv.intent.get_room_joined_memberships(room_id)
-                members = resp["joined"]
-                for mxid, info in members.items():
+                members = await self.appserv.intent.get_room_members(room_id)
+
+                for mxid in members:
+
                     member = Member(membership=Membership.JOIN)
-                    if "display_name" in info:
-                        member.displayname = info["display_name"]
-                    if "avatar_url" in info:
-                        member.avatar_url = info["avatar_url"]
+
+                    member.displayname = await self.appserv.intent.get_displayname(user_id=mxid)
+                    member.avatar_url = await self.appserv.intent.get_avatar_url(user_id=mxid)
 
                     if mxid.startswith(f"@{bot_username}"):
                         continue
@@ -194,17 +191,22 @@ class SpringLobbyClient(object):
                         self.log.debug(f"Ignoring local user")
                         continue
 
-                    # self.log.debug(f"StateStore: set member room_id {room_id} mxid {mxid} member {member}")
                     await self.appserv.state_store.set_member(room_id, mxid, member)
             else:
                 self.log.debug(f"Room {spring_room} disabled")
 
         self.log.debug("Start bridging users")
 
-        # Unique matrix users in all bridged rooms
-        matrix_users = set(val for key, dic in self.appserv.state_store.members.items() for val in dic.keys())
+        matrix_users = list()
+        for room_name, room_data in self.rooms.items():
+            enabled = room_data.get("enabled")
+            if enabled:
+                room_id = RoomID(room_data.get("room_id"))
+                room_users = await self.appserv.intent.get_room_members(room_id)
+                for member in room_users:
+                    matrix_users.append(member)
 
-        for user in matrix_users:
+        for user in list(set(matrix_users)):
             self.log.debug(f"User {user}")
             localpart, domain = self.appserv.intent.parse_user_id(user)
 
@@ -246,15 +248,14 @@ class SpringLobbyClient(object):
         self.log.debug("Users bridged")
         self.log.debug("Join matrix users")
 
-        for room_id, members in self.appserv.state_store.members.items():
+        for room_name, room_data in self.rooms.items():
+            enabled = room_data.get("enabled")
+            if enabled:
+                room_id = RoomID(room_data.get("room_id"))
+                room_users = await self.appserv.intent.get_room_members(room_id)
 
-            if room_id in self.enabled_rooms:
+                for member in room_users:
 
-                await self.appserv.intent.ensure_joined(room_id=room_id)
-
-                self.log.debug(f"RoomID: {room_id}")
-
-                for member in members:
                     self.log.debug(f"\tMember: {member}")
 
                     localpart, user_domain = self.appserv.intent.parse_user_id(member)

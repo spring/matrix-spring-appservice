@@ -29,16 +29,19 @@ yaml.width = 200
 class Config(BaseBridgeConfig):
     def __getitem__(self, key: str) -> Any:
         try:
-            return os.environ[f"MATRIX_JAURIA_{key.replace('.', '_').upper()}"]
+            return os.environ[f"MATRIX_SPRING_{key.replace('.', '_').upper()}"]
         except KeyError:
             return super().__getitem__(key)
 
     def do_update(self, helper: ConfigUpdateHelper) -> None:
+        super().do_update(helper)
+
         copy, copy_dict, base = helper
 
         copy("homeserver.address")
         copy("homeserver.domain")
         copy("homeserver.verify_ssl")
+        copy("homeserver.asmux")
 
         if "appservice.protocol" in self and "appservice.address" not in self:
             protocol, hostname, port = (self["appservice.protocol"], self["appservice.hostname"],
@@ -63,6 +66,8 @@ class Config(BaseBridgeConfig):
 
         copy("appservice.as_token")
         copy("appservice.hs_token")
+        copy("appservice.public")
+        copy("appservice.provisioning")
 
         copy("spring.client_name")
 

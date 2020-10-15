@@ -8,7 +8,7 @@ setuptools.setup(
     author="TurBoss",
     author_email="turboss@mail.comt",
 
-    description="A Python 3 asyncio Matrix SpringRTS appservice.",
+    description="A Python 3 asyncio Matrix SpringRTS sappservice.",
     long_description=open("README.md").read(),
 
     packages=setuptools.find_packages(),
