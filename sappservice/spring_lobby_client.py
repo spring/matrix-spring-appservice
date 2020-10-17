@@ -197,24 +197,24 @@ class SpringLobbyClient(object):
 
         self.log.debug("Start bridging users")
 
-        matrix_users = list()
+        bridged_clients = list()
         for room_name, room_data in self.rooms.items():
             enabled = room_data.get("enabled")
             if enabled:
                 room_id = RoomID(room_data.get("room_id"))
                 room_users = await self.appserv.intent.get_room_members(room_id)
-                for member in room_users:
-                    matrix_users.append(member)
+                for user in room_users:
+                    bridged_clients.append(user)
 
-        for user in list(set(matrix_users)):
-            self.log.debug(f"User {user}")
-            localpart, domain = self.appserv.intent.parse_user_id(user)
+        for member in list(set(bridged_clients)):
+            self.log.debug(f"User {member}")
+            localpart, domain = self.appserv.intent.parse_user_id(member)
 
             if localpart == "_discord_bot_":
                 continue
 
             try:
-                displayname = await self.appserv.intent.get_displayname(UserID(user))
+                displayname = await self.appserv.intent.get_displayname(UserID(member))
             except Exception as nf:
                 self.log.error(f"user {localpart} has no profile {nf}")
                 displayname = localpart
@@ -240,7 +240,8 @@ class SpringLobbyClient(object):
 
             displayname = re.sub('[^A-Za-z0-9]+', '', displayname)
 
-            self.log.debug(f"Bridging user {user} for {domain} externalID {localpart} externalUsername {displayname}")
+            self.log.debug(
+                f"Bridging user {member} for {domain} externalID {localpart} externalUsername {displayname}")
             self.bot.bridged_client_from(location=domain,
                                          external_id=localpart,
                                          external_username=displayname)
