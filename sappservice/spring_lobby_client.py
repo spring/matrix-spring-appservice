@@ -304,6 +304,8 @@ class SpringLobbyClient(object):
                             self.bot.join_from(room["name"], user_domain, localpart)
 
     async def join_matrix_room(self, room, clients):
+        self.log.debug("joining matrix room join from lobby")
+        self.log.debug(room)
 
         room_id = self.rooms[room]["room_id"]
         for client in clients:
@@ -329,10 +331,10 @@ class SpringLobbyClient(object):
                 matrix_id = f"@{namespace}_{client.lower()}:{domain}"
                 self.log.debug(matrix_id)
 
-                room_id = self.rooms[room]["room_id"]
+                room_id = RoomID(self.rooms[room]["room_id"])
                 self.log.debug(room_id)
 
-                user = self.appserv.intent.user(UserID(matrix_id))
+                user = self.appserv.intent.user(user_id=UserID(matrix_id))
 
                 self.log.debug(user)
                 await user.leave_room(room_id=room_id)
