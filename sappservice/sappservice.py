@@ -31,11 +31,13 @@ from urllib.parse import urlparse
 
 import copy
 
+from mautrix.appservice.state_store.asyncpg import PgASStateStore
 from mautrix.bridge import BaseBridgeConfig
 from mautrix.errors import MForbidden
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent, PresenceState)
 from mautrix.appservice import AppService
+from mautrix.util.async_db import Database
 
 from sappservice.config import Config
 
@@ -161,7 +163,6 @@ async def sappservice(config_filename, loop):
     config = Config(config_filename, None, None)
     config.load()
 
-
     logging.config.dictConfig(copy.deepcopy(config["logging"]))
 
     log: logging.Logger = logging.getLogger("sappservice")
@@ -173,7 +174,6 @@ async def sappservice(config_filename, loop):
     #     log.debug(traceback.format_exception(etype, value, trace))
     #
     # sys.excepthook = exception_hook
-
 
     ################
     #
@@ -198,6 +198,12 @@ async def sappservice(config_filename, loop):
     client_name = config["spring.client_name"]
     rooms = config["bridge.rooms"]
 
+    db = Database(config["appservice.database"])
+    await db.start()
+
+    state_store_db = PgASStateStore(db=db)
+    await state_store_db.upgrade_table.upgrade(db.pool)
+
     appserv = AppService(server=server,
                          domain=domain,
                          verify_ssl=verify_ssl,
@@ -210,10 +216,12 @@ async def sappservice(config_filename, loop):
                          id='appservice',
 
                          real_user_content_key="org.jauriarts.appservice.puppet",
+                         state_store=state_store_db,
                          aiohttp_params={"client_max_size": max_body_size * mebibyte})
 
     spring_lobby_client = SpringLobbyClient(appserv, config, loop=loop)
 
+    await db.start()
     await appserv.start(hostname, port)
     await spring_lobby_client.start()
 
