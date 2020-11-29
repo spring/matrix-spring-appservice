@@ -179,19 +179,18 @@ class SpringLobbyClient(object):
 
                 for mxid in members:
 
-                    member = Member(membership=Membership.JOIN)
+                    self.log.debug(f"member {mxid}")
 
-                    member.displayname = await self.appserv.intent.get_displayname(user_id=mxid)
-                    member.avatar_url = await self.appserv.intent.get_avatar_url(user_id=mxid)
+                    member = await self.appserv.intent.get_room_member_info(room_id=room_id, user_id=mxid)
 
                     if mxid.startswith(f"@{bot_username}"):
-                        continue
+                        self.log.debug(f"Ignore myself {mxid}")
 
-                    if mxid.startswith(f"@{self.config['appservice.namespace']}"):
-                        self.log.debug(f"Ignoring local user")
-                        continue
-
-                    await self.appserv.state_store.set_member(room_id, mxid, member)
+                    elif mxid.startswith(f"@{self.config['appservice.namespace']}_"):
+                        self.log.debug(f"Ignoring local user {mxid}")
+                    else:
+                        self.log.debug(f"Loging user {mxid}")
+                        await self.appserv.state_store.set_member(room_id, mxid, member)
             else:
                 self.log.debug(f"Room {spring_room} disabled")
 
@@ -259,7 +258,9 @@ class SpringLobbyClient(object):
 
                     self.log.debug(f"\tMember: {member}")
 
-                    localpart, user_domain = self.appserv.intent.parse_user_id(member)
+                    localpart, user_domain = self.appserv.intent.parse_user_id(UserID(member))
+
+                    self.log.debug(f"\t\tdetails: {localpart} {user_domain}")
 
                     if localpart == self.config["appservice.bot_username"]:
                         self.log.debug(f"Not bridging the local appservice")
@@ -280,18 +281,23 @@ class SpringLobbyClient(object):
                     elif localpart.startswith("spring"):
                         localpart = localpart.lstrip("spring_")
                         user_domain = "springlobby"
-                    try:
-                        data = await self.appserv.intent.get_profile(UserID(member))
-                        displayname = data.displayname
-                    except MNotFound as nf:
-                        self.log.error(f"user {localpart} has no profile {nf}")
-                        displayname = localpart
+
+                    displayname = await self.appserv.intent.get_displayname(UserID(member))
+                    # try:
+                    #     self.log.debug("FLIP")
+                    #     data = await self.appserv.intent.get_profile(UserID(member))
+                    #     self.log.debug("FLOP")
+                    #     displayname = data.displayname
+                    # except MNotFound as nf:
+                    #     self.log.error(f"user {localpart} has no profile {nf}")
+                    #     displayname = localpart
 
                     if len(displayname) > 15:
                         displayname = displayname[:15]
                     if len(localpart) > 15:
                         localpart = localpart[:15]
                     if len(user_domain) > 15:
+                        self.log.debug("user domain too long")
                         user_domain = user_domain[:15]
 
                     self.log.debug(f"user_name = {localpart}")

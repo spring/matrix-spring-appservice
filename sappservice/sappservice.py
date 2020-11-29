@@ -47,7 +47,7 @@ from sappservice.spring_lobby_client import SpringLobbyClient
 class Matrix:
     az: AppService
     sl: SpringLobbyClient
-    config: 'BaseBridgeConfig'
+    config: BaseBridgeConfig
 
     user_id_prefix: str
     user_id_suffix: str
