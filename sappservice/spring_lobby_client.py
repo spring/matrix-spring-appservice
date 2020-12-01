@@ -209,7 +209,7 @@ class SpringLobbyClient(object):
             self.log.debug(f"User {member}")
             localpart, domain = self.appserv.intent.parse_user_id(member)
 
-            if localpart == "_discord_bot_":
+            if localpart == "_discord_bot":
                 continue
 
             try:
