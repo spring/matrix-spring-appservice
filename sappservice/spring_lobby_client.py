@@ -224,7 +224,7 @@ class SpringLobbyClient(object):
             elif localpart.startswith("freenode_"):
                 localpart = localpart.lstrip("freenode_")
                 domain = "freenode.org"
-            elif localpart.startswith("spring"):
+            elif localpart.startswith("spring_"):
                 localpart = localpart.lstrip("spring_")
                 domain = "springlobby"
 
@@ -282,15 +282,11 @@ class SpringLobbyClient(object):
                         localpart = localpart.lstrip("spring_")
                         user_domain = "springlobby"
 
-                    displayname = await self.appserv.intent.get_displayname(UserID(member))
-                    # try:
-                    #     self.log.debug("FLIP")
-                    #     data = await self.appserv.intent.get_profile(UserID(member))
-                    #     self.log.debug("FLOP")
-                    #     displayname = data.displayname
-                    # except MNotFound as nf:
-                    #     self.log.error(f"user {localpart} has no profile {nf}")
-                    #     displayname = localpart
+                    try:
+                        displayname = await self.appserv.intent.get_displayname(UserID(member))
+                    except Exception as nf:
+                        self.log.error(f"user {localpart} has no profile {nf}")
+                        displayname = localpart
 
                     if len(displayname) > 15:
                         displayname = displayname[:15]
