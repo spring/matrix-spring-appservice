@@ -237,13 +237,9 @@ class SpringLobbyClient(object):
 
             domain = domain.replace('-', '_')
 
-            displayname = re.sub('[^A-Za-z0-9]+', '', displayname)
-
             self.log.debug(
                 f"Bridging user {member} for {domain} externalID {localpart} externalUsername {displayname}")
-            self.bot.bridged_client_from(location=domain,
-                                         external_id=localpart,
-                                         external_username=displayname)
+            self.bot.bridged_client_from(domain, localpart.lower(), displayname)
 
         self.log.debug("Users bridged")
         self.log.debug("Join matrix users")
@@ -419,7 +415,7 @@ class SpringLobbyClient(object):
         if user_name and user_domain:
             display_name = await self.appserv.intent.get_displayname(user_id=user_id)
 
-            self.bot.bridged_client_from(user_domain, user_name, display_name)  # TODO check if already bridged
+            self.bot.bridged_client_from(user_domain, user_name.lower(), display_name)  # TODO check if already bridged
             self.log.debug(f"Matrix user {user_name} bridged")
 
             self.bot.join_from(channel, user_domain, user_name)
