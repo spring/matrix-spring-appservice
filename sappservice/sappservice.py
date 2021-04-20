@@ -160,7 +160,7 @@ class Matrix:
 
 
 async def sappservice(config_filename, loop):
-    config = Config(config_filename, None, None)
+    config = Config(config_filename, "", "")
     config.load()
 
     logging.config.dictConfig(copy.deepcopy(config["logging"]))
@@ -313,7 +313,6 @@ async def sappservice(config_filename, loop):
     @spring_lobby_client.bot.on("failed")
     async def on_lobby_failed(message):
         log.debug(f"message FAILED {message}")
-
 
     matrix = Matrix(appserv, spring_lobby_client, config)
 

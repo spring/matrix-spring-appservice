@@ -25,7 +25,6 @@ import sys
 
 from sappservice.sappservice import sappservice
 
-
 parser = argparse.ArgumentParser()
 parser.add_argument('-c', '--config')
 args = parser.parse_args()
@@ -41,4 +40,3 @@ Ussage: sappservice -c config.yaml
 loop = asyncio.get_event_loop()  # type: asyncio.AbstractEventLoop
 loop.run_until_complete(sappservice(config_filename=config_filename, loop=loop))
 loop.run_forever()
-

@@ -27,6 +27,7 @@ yaml.width = 200
 
 
 class Config(BaseBridgeConfig):
+
     def __getitem__(self, key: str) -> Any:
         try:
             return os.environ[f"MATRIX_SPRING_{key.replace('.', '_').upper()}"]
