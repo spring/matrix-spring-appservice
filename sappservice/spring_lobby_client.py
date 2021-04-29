@@ -472,6 +472,9 @@ class SpringLobbyClient(object):
             domain = "frenode.org"
             user_name = user_name.lstrip("freenode_")
 
+        if len(user_name) > 15:
+            user_name = user_name[:15]
+
         # if emote is True:
         #     self.bot.say_ex(user_name, domain, channel, body)
         # else:
