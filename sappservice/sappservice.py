@@ -61,7 +61,7 @@ class Matrix:
     async def handle_message(self, room_id: RoomID, user_id: UserID, message: MessageEventContent,
                              event_id: EventID) -> None:
 
-        self.log.debug(f"message \"{message}\" from {user_id} to {room_id}:")
+        self.log.debug(f"message \"{message.body}\" from {user_id} to {room_id}:")
 
         if message.msgtype == MessageType.TEXT:
             await self.sl.say_from_matrix(user_id, room_id, event_id, message.body)
