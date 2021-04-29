@@ -444,6 +444,8 @@ class SpringLobbyClient(object):
         if user_id.startswith(f"@{namespace}"):
             return
 
+        self.log.debug(f"room ID = {room_id}")
+        
         room_name = list(v.get('name') for _, v in self.rooms.items() if v.get('room_id') == room_id)[0]
 
         room_data = self.rooms.get(room_name)
