@@ -462,6 +462,8 @@ class SpringLobbyClient(object):
         user_name = self.appserv.intent.user(user_id=UserID(user_id)).localpart
         domain = self.appserv.intent.user(user_id=UserID(user_id)).domain
 
+        self.log.debug(f"User Name = {user_name}")
+
         if user_name.startswith("_discord"):
             domain = "discord"
             user_name = user_name.lstrip("_discord_")
