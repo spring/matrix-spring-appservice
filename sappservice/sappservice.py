@@ -39,6 +39,7 @@ from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEve
 from mautrix.appservice import AppService
 # from mautrix.util.async_db import Database
 from mautrix.util.async_db import PostgresDatabase
+from mautrix.util.async_db import UpgradeTable
 
 from sappservice.config import Config
 
@@ -198,8 +199,10 @@ async def sappservice(config_filename, loop):
     port = config["appservice.port"]
     client_name = config["spring.client_name"]
     rooms = config["bridge.rooms"]
+    
+    upgrade_table = UpgradeTable()
 
-    db = PostgresDatabase(config["appservice.database"])
+    db = PostgresDatabase(config["appservice.database"], upgrade_table)
     await db.start()
 
     state_store_db = PgASStateStore(db=db)
