@@ -68,3 +68,9 @@ state_store\.json
 venv36/
 
 mx-state.json
+
+.project
+
+.pydevproject
+
+.settings/org.eclipse.core.resources.prefs

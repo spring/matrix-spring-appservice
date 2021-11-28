@@ -37,7 +37,8 @@ from mautrix.errors import MForbidden
 from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEvent, MessageType,
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent, PresenceState)
 from mautrix.appservice import AppService
-from mautrix.util.async_db import Database
+# from mautrix.util.async_db import Database
+from .asyncpg import PostgresDatabase
 
 from sappservice.config import Config
 
@@ -198,7 +199,7 @@ async def sappservice(config_filename, loop):
     client_name = config["spring.client_name"]
     rooms = config["bridge.rooms"]
 
-    db = Database(config["appservice.database"])
+    db = PostgresDatabase(config["appservice.database"])
     await db.start()
 
     state_store_db = PgASStateStore(db=db)
