@@ -38,7 +38,7 @@ from mautrix.types import (EventID, RoomID, UserID, Event, EventType, MessageEve
                            MessageEventContent, StateEvent, Membership, MemberStateEventContent, PresenceState)
 from mautrix.appservice import AppService
 # from mautrix.util.async_db import Database
-from mautrix.util.asyncpg import PostgresDatabase
+from mautrix.util.async_db import PostgresDatabase
 
 from sappservice.config import Config
 
