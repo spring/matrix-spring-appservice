@@ -447,7 +447,15 @@ class SpringLobbyClient(object):
         self.log.debug(f"room ID = {room_id}")
         self.log.debug(f"user ID = {user_id}")
 
-        room_name = list(v.get('name') for _, v in self.rooms.items() if v.get('room_id') == room_id)[0]
+        room_name = None
+        for k, v in self.rooms.items():
+            if v.get("room_id") == room_id:
+                room_name = k
+
+        if room_name is None:
+            return
+
+        # room_name = list(v.get('name') for _, v in self.rooms.items() if v.get('room_id') == room_id)[0]
 
         room_data = self.rooms.get(room_name)
 
