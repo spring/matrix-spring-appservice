@@ -219,7 +219,6 @@ async def sappservice(config_filename, loop):
                          loop=loop,
                          id='appservice',
 
-                         real_user_content_key="org.jauriarts.appservice.puppet",
                          state_store=state_store_db,
                          aiohttp_params={"client_max_size": max_body_size * mebibyte})
 
