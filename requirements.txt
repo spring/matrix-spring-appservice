@@ -6,4 +6,4 @@ sqlalchemy
 asyncblink
 ruamel.yaml
 aiohttp
-git+https://github.com/TurBoss/asyncspring.git
+git+https://github.com/spring/uberserver-async.git
